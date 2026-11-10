@@ -1,4 +1,8 @@
-# Neuro Easy â€” development starter
+# Neuro Easy - development starter
+
+Repository: https://github.com/uoozcan/neuro-easy
+
+For continuation in Codex, start with [CODEX_HANDOFF.md](CODEX_HANDOFF.md).
 
 One terminal menu for **MELD Graph** and **SWANe**. This is an initial launcher, not a validated neuroimaging distribution. The applications have NOT been installed or tested in Ubuntu in the authoring session. No SWANe-to-MELD data handoff is implemented.
 
