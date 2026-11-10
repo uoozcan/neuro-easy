@@ -146,6 +146,39 @@ class LauncherTests(unittest.TestCase):
         with patch.object(n, 'dependency_report', return_value={'fsl': {'state': 'MISSING'}}):
             self.assertEqual(n.main(['swane-dependencies']), 2)
 
+    def validation_module(self):
+        path = Path(__file__).parents[1] / 'tools/validate_swane_t1.py'
+        spec = importlib.util.spec_from_file_location('validation_fixture', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_changed_mri_inputs_cannot_reuse_cached_outputs(self):
+        validation = self.validation_module()
+        dicom = Path(self.tmp.name) / 'dicom'
+        dicom.mkdir()
+        (dicom / 'fixture.dcm').write_bytes(b'offline fixture only')
+        output = Path(self.tmp.name) / 'analysis'
+        output.mkdir()
+        (output / 'input-manifest.json').write_text('[]')
+        with patch.object(validation, 'version', return_value='0.2.1.1'), patch.object(validation.sys, 'argv', ['validate', '--dicom', str(dicom), '--output', str(output)]):
+            with self.assertRaises(SystemExit) as caught:
+                validation.main()
+        self.assertEqual(caught.exception.code, 2)
+        self.assertFalse((output / 'validation.json').exists())
+
+    def test_untracked_cached_analysis_is_rejected(self):
+        validation = self.validation_module()
+        dicom = Path(self.tmp.name) / 'dicom'
+        dicom.mkdir()
+        (dicom / 'fixture.dcm').write_bytes(b'offline fixture only')
+        output = Path(self.tmp.name) / 'analysis'
+        (output / 'work').mkdir(parents=True)
+        with patch.object(validation, 'version', return_value='0.2.1.1'), patch.object(validation.sys, 'argv', ['validate', '--dicom', str(dicom), '--output', str(output)]):
+            with self.assertRaises(SystemExit) as caught:
+                validation.main()
+        self.assertEqual(caught.exception.code, 2)
+
 
 if __name__ == '__main__':
     unittest.main()

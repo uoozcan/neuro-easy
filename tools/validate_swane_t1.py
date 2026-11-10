@@ -3,6 +3,7 @@ import argparse
 import datetime as dt
 from importlib.metadata import version
 import json
+import hashlib
 import os
 from pathlib import Path
 import resource
@@ -26,6 +27,18 @@ def main():
     if version('swane') != '0.2.1.1':
         parser.error('This validation harness is specific to SWANe 0.2.1.1.')
     output.mkdir(parents=True, exist_ok=True)
+    inputs = [{'name': str(p.relative_to(dicom)), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+              for p in sorted(dicom.rglob('*')) if p.is_file()]
+    if not inputs:
+        parser.error('DICOM series directory contains no files.')
+    manifest = output / 'input-manifest.json'
+    if manifest.is_file():
+        if json.loads(manifest.read_text()) != inputs:
+            parser.error('Inputs differ from this cached run. Choose a fresh output directory.')
+    elif (output / 'work').exists():
+        parser.error('Existing output has no input manifest. Choose a fresh output directory.')
+    else:
+        launcher.save(manifest, inputs)
     launcher.require_space(output, 5)
     launcher.runtime_environment(launcher.load(required=False))
     os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = '2'
@@ -34,6 +47,8 @@ def main():
     report = {'status': 'RUNNING', 'utc': dt.datetime.now(dt.timezone.utc).isoformat(),
               'scope': 'SWANe T1 reference subworkflow only; no registration, cortical reconstruction or Slicer export',
               'swane': version('swane'), 'python': sys.version.split()[0],
+              'input_file_count': len(inputs),
+              'input_manifest_sha256': hashlib.sha256(manifest.read_bytes()).hexdigest(),
               'settings': {'bet_thr': 0.3, 'bet_robust': True, 'bet_bias_correction': False,
                            'synth_strip': False, 'threads': 2}}
     launcher.save(output / 'validation.json', report)
@@ -101,6 +116,8 @@ def main():
         fig.savefig(output / 'mask-qc.png', dpi=120)
         plt.close(fig)
         report.update({'status': 'PASSED_AUTOMATED_CHECKS', 'outputs': files,
+                       'output_sha256': {field: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                         for field, path in files.items()},
                        'shape': list(reference.shape), 'zooms_mm': list(map(float, reference.header.get_zooms())),
                        'orientation': list(nib.aff2axcodes(reference.affine)),
                        'affine': reference.affine.tolist(),

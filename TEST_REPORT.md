@@ -22,7 +22,7 @@ This report supersedes the original restricted Windows-session inventory. Instal
 6. Partial FSL installation: user explicitly accepted the FSL licence. A separate conda environment contains components pinned from the official 6.0.7.8 Linux manifest, plus fsl-installer 3.21.0 for command wrappers. local/fsl-explicit.txt records all packages. This is not a full FSL/module installation. The classic conda solver was interrupted after a slow solve; the installed libmamba solver completed the isolated transaction.
 7. Docker: official local static 29.9.3 and checksum-verified Compose 5.7.0. docker run --rm hello-world ran successfully, exit 0; digest sha256:c567b231f65614688711a75f31518a064258a51d442117a3e771a3a8fdba78ef.
 8. CPU Compose: bash start.sh meld-config passed with actual Compose. The generated single normalized configuration preserves resolved secrets, overrides /data and removes GPU reservations; the original upstream file was not edited.
-9. Offline source checks: 18 unittest cases passed on Ubuntu Python 3.11.14, exit 0. Cases include independent SWANe setup, CPU model generation, digest retention/invalidation, licence guard, resource guard, subject argument safety, preserved subprocess exit code and interrupted/failed status replacement. External application calls are mocked in these tests.
+9. Offline source checks: 20 unittest cases passed on Ubuntu Python 3.11.14, exit 0. Cases include independent SWANe setup, CPU model generation, digest retention/invalidation, licence guard, resource guard, subject argument safety, preserved subprocess exit code and interrupted/failed status replacement. External application calls are mocked in these tests.
 10. Bash syntax, Python compilation and menu quit smoke checks passed. FSL setup without explicit licence acceptance returned 2 without starting installation. Action-specific SWANe T1 readiness returned 0 after dependencies were installed.
 
 ## Real public-MRI test
@@ -41,6 +41,8 @@ bash start.sh validate-swane-t1 \
 ```
 
 First actual attempt: converted 192 real DICOM slices, reoriented and cropped the volume, then failed in BET because dc was missing. Exit nonzero; validation.json recorded FAILED with the actual traceback. Original result and log were preserved locally. After apt installed dc, the retry reused completed nodes, finished robust BET and reached N4 bias correction.
+
+Conversion-reference check: converted NIfTI shape (192, 256, 256), affine and voxel values exactly match the upstream reference; maximum affine difference 0.0. Canonical comparison after SWANe reorientation also preserves geometry and all voxel values. A 15-slice BET overlay was visually inspected: no gross brain truncation was apparent in the sampled views; small anterior extracerebral remnants remain. This is limited QC without a ground-truth segmentation.
 
 Final result: IN PROGRESS; replace this paragraph with the observed final evidence before claiming a pass. Local logs and validation.json are the source of truth.
 
@@ -68,4 +70,4 @@ The custom subnet avoids WSL's startup warning about 172.17.176.0/20 overlapping
 
 ## Publication
 
-Source-only branch/PR, final commit and CI evidence will be recorded after review. No full scientific end-to-end pass is claimed.
+Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. GitHub Actions run 42842223591 passed the existing Ubuntu 22.04/Python 3.10 launcher tests and Bash syntax check for commit 3d4ad589466791007cf834fb53158c9c8b515f66. The proposed workflow expansion could not be pushed because the CLI OAuth credential lacks workflow scope, so the original workflow is preserved. Latest commit/CI and completed live-test evidence will be added after the remaining runs finish. No full scientific end-to-end pass is claimed.

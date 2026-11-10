@@ -41,7 +41,7 @@ bash start.sh open-swane
 
 SWANe does not require any MELD configuration. Package installation includes dcm2niix. `requirements-swane-py311.lock` records the actual Python 3.11 environment; use `bash start.sh install-swane --locked` with Python 3.11 for pinned transitive versions. Other supported Python versions resolve dependencies separately and are not covered by that lock.
 
-Logs, pip reports, installed versions, action status and all local configuration are under ignored `local/`. Rerunning installation resumes using the same project environment. A failure preserves the subprocess exit code; Ctrl+C records INTERRUPTED. Repeated scientific runs can reuse Nipype's completed-node cache.
+Logs, pip reports, installed versions, action status and all local configuration are under ignored `local/`. Rerunning installation resumes using the same project environment. A failure preserves the subprocess exit code; Ctrl+C records INTERRUPTED. Repeated scientific runs can reuse Nipype's completed-node cache only when the input checksums match. Changed inputs require a fresh output directory.
 
 ## SWANe T1 reference dependencies
 
