@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import re
 import shutil
@@ -43,6 +44,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--conda', default=shutil.which('conda') or str(Path.home() / 'miniconda3/bin/conda'))
     parser.add_argument('--accept-fsl-license', action='store_true')
+    parser.add_argument('--locked', action='store_true', help='Use the tested linux-64 explicit package lock.')
     parser.add_argument('--finish-existing', action='store_true',
                         help='Finish a completed installation without solving/downloading again.')
     args = parser.parse_args()
@@ -50,6 +52,8 @@ def main():
         print('Read and accept the FSL licence yourself: ' + LICENCE)
         print('Then rerun with --accept-fsl-license. No licence is accepted automatically.')
         return 2
+    if sys.platform != 'linux' or platform.machine() != 'x86_64':
+        parser.error('This FSL profile is for Linux x86_64 only.')
     if not Path(args.conda).is_file():
         parser.error('Provide --conda /path/to/conda. Install Miniforge from its official source if needed.')
     missing = [tool for tool in ('bc', 'dc', 'tcsh') if not shutil.which(tool)]
@@ -74,6 +78,8 @@ def main():
                          'manifest_sha256': hashlib.sha256(environment.encode()).hexdigest(),
                          'specs': specs, 'scope': 'T1 reference components only',
                          'licence': LICENCE, 'licence_accepted': True}, indent=2))
+        if args.locked:
+            specfile = ROOT / 'requirements-fsl-linux-64.lock'
         command = 'install' if (prefix / 'conda-meta/history').is_file() else 'create'
         subprocess.run([args.conda, command, '-y', '--solver', 'libmamba', '-p', str(prefix),
                         '--override-channels', '--strict-channel-priority', '-c', CHANNEL,

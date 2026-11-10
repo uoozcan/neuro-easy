@@ -22,7 +22,7 @@ This report supersedes the original restricted Windows-session inventory. Instal
 6. Partial FSL installation: user explicitly accepted the FSL licence. A separate conda environment contains components pinned from the official 6.0.7.8 Linux manifest, plus fsl-installer 3.21.0 for command wrappers. local/fsl-explicit.txt records all packages. This is not a full FSL/module installation. The classic conda solver was interrupted after a slow solve; the installed libmamba solver completed the isolated transaction.
 7. Docker: official local static 29.9.3 and checksum-verified Compose 5.7.0. docker run --rm hello-world ran successfully, exit 0; digest sha256:c567b231f65614688711a75f31518a064258a51d442117a3e771a3a8fdba78ef.
 8. CPU Compose: bash start.sh meld-config passed with actual Compose. The generated single normalized configuration preserves resolved secrets, overrides /data and removes GPU reservations; the original upstream file was not edited.
-9. Offline source checks: 20 unittest cases passed on Ubuntu Python 3.11.14, exit 0. Cases include independent SWANe setup, CPU model generation, digest retention/invalidation, licence guard, resource guard, subject argument safety, preserved subprocess exit code and interrupted/failed status replacement. External application calls are mocked in these tests.
+9. Offline source checks: 21 unittest cases passed on Ubuntu Python 3.11.14, exit 0. Cases include independent SWANe setup, CPU model generation, digest retention/invalidation, licence guard, resource guard, subject argument safety, preserved subprocess exit code and interrupted/failed status replacement. External application calls are mocked in these tests.
 10. Bash syntax, Python compilation and menu quit smoke checks passed. FSL setup without explicit licence acceptance returned 2 without starting installation. Action-specific SWANe T1 readiness returned 0 after dependencies were installed.
 
 ## Real public-MRI test
@@ -44,13 +44,25 @@ First actual attempt: converted 192 real DICOM slices, reoriented and cropped th
 
 Conversion-reference check: converted NIfTI shape (192, 256, 256), affine and voxel values exactly match the upstream reference; maximum affine difference 0.0. Canonical comparison after SWANe reorientation also preserves geometry and all voxel values. A 15-slice BET overlay was visually inspected: no gross brain truncation was apparent in the sampled views; small anterior extracerebral remnants remain. This is limited QC without a ground-truth segmentation.
 
-Final result: IN PROGRESS; replace this paragraph with the observed final evidence before claiming a pass. Local logs and validation.json are the source of truth.
+Final result: PASSED for the T1 reference subworkflow, exit 0. Five nonempty outputs were produced: reference, brain reference, binary brain mask, uncorrected reference and uncorrected brain reference. All image data are finite; all five share shape (192, 256, 170), 1 mm voxel spacing and matching geometry. The brain image equals the corrected reference multiplied by the mask. Mask volume is 1577.925 mL. Orientation is LAS.
+
+The successful retry took 1447.89 seconds (24.1 minutes), with 738.8 MiB peak self RSS and 611.5 MiB peak child RSS reported separately. This includes cached conversion/cropping from the first failed attempt; it is not a fresh uncached runtime for the entire pipeline. The first attempt took 231.56 seconds. The final checksum-aware harness was then executed against the completed same-input cache, passed again in 14.55 seconds, recorded hashes for 192 input files and all five outputs, and verified output geometry/masking again.
+
+The final N4-corrected mask overlay was also visually inspected. No gross truncation was apparent in the 15 sampled orthogonal slices; small anterior extracerebral remnants remain. No ground-truth segmentation accuracy was measured. Local validation-full-run.json preserves the full retry's metrics; validation.json and visual-qc.json record the final checks and limited visual assessment.
 
 This subworkflow has no inter-modal/atlas registration, cortical reconstruction or Slicer export. It cannot establish complete SWANe study acceptance or clinical accuracy.
 
+## Clean-source reproduction
+
+A clean local Git clone created a fresh isolated SWANe environment under its own ignored local/. Python 3.11.18 installed the full recorded lock; pip freeze exactly matched requirements-swane-py311.lock. pip check and SWANe import passed, exit 0. The cloned source regression suite also passed. This was a new source checkout and venv on the same existing WSL distribution, not a clean OS or native-laptop scientific reproduction.
+
 ## MELD and remaining blockers
 
-The actual image pull is in progress. Registry digest and container smoke evidence must be added after completion.
+Image installation completed, exit 0. Immutable image:
+meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef.
+The observed Linux amd64 image size is 18,243,989,272 bytes. A real licence-independent container smoke check ran in /app with Python 3.9.25, imported numpy/torch/meld_graph, and reported torch 1.10.0+cu102. No GPU device was requested; this is the upstream CPU release.
+
+After image installation, actual prepare-meld and test-meld attempts returned 1 with "Obtain your own license.txt and place it in the MELD release folder." doctor --for meld-run returned 2 with missing meld_licenses and meld_recommended_ram. Upstream prepare_classifier and pytest were not executed past that prerequisite guard, and pytest collection/skips remain unobserved.
 
 The user stated they have neither personal MELD nor FreeSurfer licence files. No unrelated private folders were searched. No substitute licence was used. MELD preparation, upstream pytest and raw-MRI-to-report execution cannot proceed without them.
 

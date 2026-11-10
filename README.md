@@ -2,14 +2,14 @@
 
 One Ubuntu menu for independent **MELD Graph** and **SWANe** workflows.
 
-Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOFF.md](CODEX_HANDOFF.md) to continue development and [TEST_REPORT.md](TEST_REPORT.md) for observed evidence. This is a development launcher; complete MRI-to-report validation and native-laptop acceptance remain pending.
+Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOFF.md](CODEX_HANDOFF.md) to continue development and [TEST_REPORT.md](TEST_REPORT.md) for observed evidence and [VERSIONS.md](VERSIONS.md) for exact versions. This is a development launcher; complete MRI-to-report validation and native-laptop acceptance remain pending.
 
 ## What has been exercised
 
 - Ubuntu 20.04 WSL2: isolated SWANe 0.2.1.1 installation, package checks and a visually inspected WSLg GUI.
 - The installed application's own checks detect dcm2niix, partial FSL 6.0.7.8 and Graphviz.
 - Real Docker hello-world and CPU Compose configuration checks pass.
-- A real public T1 DICOM reference-workflow test is tracked in TEST_REPORT.md.
+- The real public T1 DICOM reference subworkflow completed and its outputs were inspected; see TEST_REPORT.md.
 - Offline CI tests launcher behavior only. It does not validate either scientific application.
 
 Ubuntu 22.04/24.04 are candidate native targets. Current Docker apt documentation supports them; it no longer lists Ubuntu 20.04. Do not upgrade/reset an existing WSL distribution as part of this setup. The local Ubuntu 20.04 development session uses isolated official Docker static binaries; that test setup needs manual updates and is not the recommended laptop installation route.
@@ -50,13 +50,13 @@ The published 0.2.1.1 release requires FSL for the selected T1 workflow. Its new
 Read the [FSL licence](https://fsl.fmrib.ox.ac.uk/fsl/docs/license.html) yourself. FSL installation requires your explicit acceptance. With an existing conda installation:
 
 ```bash
-bash start.sh install-fsl --conda "$HOME/miniconda3/bin/conda" --accept-fsl-license
+bash start.sh install-fsl --conda "$HOME/miniconda3/bin/conda" --accept-fsl-license --locked
 bash start.sh swane-dependencies
 bash start.sh doctor --for swane-analysis
 bash start.sh open-swane
 ```
 
-The FSL installer uses official FSL/conda-forge channels in a separate local/fsl-env. It pins the requested components to the official 6.0.7.8 release manifest and installs FSL's wrapper generator. This is a **partial FSL installation for T1 reference preprocessing**, not every SWANe module. The launcher exposes FSL's command wrappers without putting FSL's Python ahead of SWANe.
+The tested linux-64 package set is recorded in requirements-fsl-linux-64.lock; --locked reuses those exact public package URLs. The FSL installer uses official FSL/conda-forge channels in a separate local/fsl-env. It pins the requested components to the official 6.0.7.8 release manifest and installs FSL's wrapper generator. This is a **partial FSL installation for T1 reference preprocessing**, not every SWANe module. The launcher exposes FSL's command wrappers without putting FSL's Python ahead of SWANe.
 
 For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export; they have not been installed or validated here. MELD's bundled FreeSurfer is separate and is not reused.
 

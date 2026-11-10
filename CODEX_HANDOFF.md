@@ -19,11 +19,11 @@ SWANe 0.2.1.1, dcm2niix and partial FSL 6.0.7.8 are installed in local/. Real WS
 Graphviz, xclip, tcsh, Qt/XCB libraries, bc and dc were installed using apt.
 FreeSurfer, MATLAB Runtime and 3D Slicer have not been installed.
 
-The selected scientific test is SWANe's real T1 reference subworkflow on one licensed public MPRAGE DICOM series. Check TEST_REPORT.md and local/swane-t1-validation/validation.json for its final status. The first actual run failed because FSL BET needed dc; that was installed and an actionable readiness check added. The retry reuses completed Nipype nodes.
+The selected scientific test is SWANe's real T1 reference subworkflow on one licensed public MPRAGE DICOM series. The real reference subworkflow completed with five checked outputs and limited visual QC; TEST_REPORT.md records its timing and acceptance scope. local/swane-t1-validation/validation-full-run.json preserves the full retry, and validation.json records the checksum-aware cached check. The first actual run failed because FSL BET needed dc; that was installed and an actionable readiness check added. The successful retry reused completed Nipype nodes; its observed 1447.89-second runtime is therefore not a fresh uncached whole-pipeline benchmark. A fresh source clone and new SWANe venv also passed package checks with an exact lock match.
 
 Docker static 29.9.3 and Compose 5.7.0 are local development tools because Ubuntu 20.04 is no longer listed in Docker's current apt support matrix. Real hello-world passed. A dedicated project daemon uses local/docker.sock and local/docker-data; it is session-managed. README/TEST_REPORT describe the restart command. Do not treat this as a native-laptop Docker deployment.
 
-Official MELD v2.2.7 archive and source are under ignored local/. The generated CPU Compose configuration was checked with real Compose. Both licence locations were confirmed as /run/secrets/license.txt and /run/secrets/meld_license.txt. The original release Compose is unchanged.
+Official MELD v2.2.7 archive and source are under ignored local/. The generated CPU Compose configuration was checked with real Compose. Both licence locations were confirmed as /run/secrets/license.txt and /run/secrets/meld_license.txt. The original release Compose is unchanged. The image is installed at digest sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef; a real container import smoke passed. Scientific preparation/pytest are blocked by the personal licence prerequisite.
 
 ## Acceptance boundaries
 

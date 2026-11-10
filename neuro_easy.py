@@ -296,6 +296,8 @@ def action(args):
             command += ['--conda', args.conda]
         if args.accept_fsl_license:
             command += ['--accept-fsl-license']
+        if args.locked:
+            command += ['--locked']
         run(command)
     elif args.command == 'validate-swane-t1':
         run([swane_python(), ROOT / 'tools/validate_swane_t1.py',
@@ -363,8 +365,11 @@ def action(args):
             matches = [d for d in digests if d.split('@')[0] == repository]
             if not matches:
                 raise ValueError('No registry digest matches the selected image repository.')
-            config['meld_image_digest'] = matches[0]
-            save(CONFIG, config)
+            latest = load(required=False)
+            if latest.get('meld_release') != config['meld_release']:
+                raise ValueError('MELD release changed during download. Rerun install-meld for the current configuration.')
+            latest['meld_image_digest'] = matches[0]
+            save(CONFIG, latest)
             save(STATE / 'meld-image.json', {k: inspected.get(k) for k in
                  ('Id', 'RepoDigests', 'Architecture', 'Os', 'Size', 'Config')})
             print('MELD image installed and pinned. Licences are required before preparation.')
@@ -401,6 +406,7 @@ def main(argv=None):
     p = sub.add_parser('install-fsl')
     p.add_argument('--conda')
     p.add_argument('--accept-fsl-license', action='store_true')
+    p.add_argument('--locked', action='store_true')
     p = sub.add_parser('validate-swane-t1')
     p.add_argument('--dicom', required=True)
     p.add_argument('--output', required=True)

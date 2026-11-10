@@ -179,6 +179,21 @@ class LauncherTests(unittest.TestCase):
                 validation.main()
         self.assertEqual(caught.exception.code, 2)
 
+    def test_meld_pull_preserves_concurrent_swane_configuration(self):
+        def fake_run(command, **kwargs):
+            if 'pull' in command:
+                latest = n.load()
+                latest['fsl_dir'] = '/configured/while/pulling'
+                n.CONFIG.write_text(json.dumps(latest))
+                return subprocess.CompletedProcess(command, 0)
+            if command[:3] == ['docker', 'image', 'inspect']:
+                return subprocess.CompletedProcess(command, 0, json.dumps([{'RepoDigests': ['example/image@sha256:pinned']}]))
+            return subprocess.CompletedProcess(command, 0, json.dumps({'services': {'meld_graph': {'image': 'example/image:tag'}}}))
+        with patch.object(n, 'linux'), patch.object(n, 'compose', return_value=['docker', 'compose']), patch.object(n, 'docker_storage', return_value=self.state), patch.object(n, 'require_space'), patch.object(n, 'run', side_effect=fake_run):
+            self.assertEqual(n.main(['install-meld']), 0)
+        self.assertEqual(n.load()['fsl_dir'], '/configured/while/pulling')
+        self.assertEqual(n.load()['meld_image_digest'], 'example/image@sha256:pinned')
+
 
 if __name__ == '__main__':
     unittest.main()
