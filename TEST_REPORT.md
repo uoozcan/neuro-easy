@@ -54,7 +54,7 @@ This subworkflow has no inter-modal/atlas registration, cortical reconstruction 
 
 ## Clean-source reproduction
 
-A clean local Git clone created a fresh isolated SWANe environment under its own ignored local/. Python 3.11.18 installed the full recorded lock; pip freeze exactly matched requirements-swane-py311.lock. pip check and SWANe import passed, exit 0. The cloned source regression suite also passed. This was a new source checkout and venv on the same existing WSL distribution, not a clean OS or native-laptop scientific reproduction.
+A clean local Git clone created a fresh isolated SWANe environment under its own ignored local/. Python 3.11.18 installed the full recorded lock; pip freeze exactly matched requirements-swane-py311.lock. pip check and SWANe import passed, exit 0. The latest cloned source regression suite passed all 21 tests, and Python compilation, Bash syntax and menu quit checks passed. The clean clone also installed a separate FSL environment using requirements-fsl-linux-64.lock. All 87 explicit public package URLs matched the original tested environment exactly, FSL wrappers were generated, and its actual SWANe dependency check returned 0 with dcm2niix/FSL/Graphviz/t1_runtime detected. This was a new source checkout and new environments on the same existing WSL distribution, not a clean OS or native-laptop scientific reproduction. The real MRI subworkflow was not rerun uncached in the clean clone.
 
 ## MELD and remaining blockers
 
@@ -82,4 +82,4 @@ The custom subnet avoids WSL's startup warning about 172.17.176.0/20 overlapping
 
 ## Publication
 
-Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. GitHub Actions run 42842223591 passed the existing Ubuntu 22.04/Python 3.10 launcher tests and Bash syntax check for commit 3d4ad589466791007cf834fb53158c9c8b515f66. The proposed workflow expansion could not be pushed because the CLI OAuth credential lacks workflow scope, so the original workflow is preserved. Latest commit/CI and completed live-test evidence will be added after the remaining runs finish. No full scientific end-to-end pass is claimed.
+Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. GitHub Actions run 42842223591 passed the existing Ubuntu 22.04/Python 3.10 launcher tests and Bash syntax check for commit 3d4ad589466791007cf834fb53158c9c8b515f66. The proposed workflow expansion could not be pushed because the CLI OAuth credential lacks workflow scope, so the original workflow is preserved. Implementation commit b5e17af801c0ca959c2b75eaf4a28963508315f4 passed GitHub Actions run 42844193187, including the 21-test suite and Bash syntax check. The completed real-MRI and container evidence is recorded above. Subsequent publication changes update documentation only; the current PR head and its checks are visible on GitHub. No full scientific end-to-end pass is claimed.
