@@ -13,7 +13,7 @@ On 2026-11-10 the actual user explicitly accepted the FSL licence and stated the
 ## Observed state
 
 WSL access and HTTPS work when the terminal command runs outside the restricted sandbox. Do not reset WSL.
-Ubuntu 20.04.6, x86_64, i7-10750H (12 logical CPUs), about 15.5 GiB RAM and 4 GiB swap.
+Ubuntu 20.04.6, x86_64, i7-10750H (12 logical CPUs), initially about 15.5 GiB RAM and 4 GiB swap; after the user-approved memory follow-up, Ubuntu and the MELD container see 24.4558 GiB RAM and 7 GiB swap. The 31.82 GiB Windows host now has memory=25GB in its backed-up .wslconfig.
 System Python is 3.8.10. Existing /home/umut/miniconda3/bin/python is 3.11.14 and was used only to create an isolated project venv. Existing conda environments were preserved.
 SWANe 0.2.1.1, dcm2niix and partial FSL 6.0.7.8 are installed in local/. Real WSLg GUI inspection shows dcm2niix/FSL/Graphviz detected.
 Graphviz, xclip, tcsh, Qt/XCB libraries, bc and dc were installed using apt.
@@ -29,7 +29,7 @@ Official MELD v2.2.7 archive and source are under ignored local/. The generated 
 
 - Offline tests, package checks, visible GUI, T1 reference preprocessing, MELD pytest and complete raw-MRI pipelines are separate acceptance levels.
 - Missing personal MELD/FreeSurfer licences block MELD preparation and scientific execution.
-- WSL currently has less RAM than MELD's 24 GB recommendation. The launcher refuses pytest/prediction under 24 GiB.
+- The WSL RAM blocker is resolved: actual container-visible RAM is 24.4558 GiB and meld_recommended_ram=true. The launcher still correctly blocks execution until personal licences are provided. Capacity visibility has been checked; a full memory stress/prediction test has not run.
 - SWANe's T1 reference test does not cover registration, cortical reconstruction, multi-modal studies or Slicer reports.
 - No SWANe-to-MELD interoperability is implemented.
 - Clean native Ubuntu laptop reproduction still requires access to that computer.
@@ -52,3 +52,5 @@ See TEST_REPORT.md for exact observed results, final GitHub publication and rema
 ## Published continuation
 
 Draft PR: https://github.com/uoozcan/neuro-easy/pull/1 on codex/wsl-install-validation. Source implementation b5e17af801c0ca959c2b75eaf4a28963508315f4 passed GitHub Actions run 42844193187. The draft status reflects incomplete full scientific/native-laptop acceptance. The original CI workflow is preserved because the CLI credential lacks workflow scope; the proposed expanded workflow is only in ignored local/launcher-expanded.yml.
+
+Follow-up GUI inspection imported the 192-image public T1 series into local/swane-work/public-t1-qa and generated the real workflow graph. All imported content hashes match. No GUI analysis was executed. Application Settings were inspected; subject preferences had a capture limitation. Slicer discovery remains an unbounded filesystem search; see TEST_REPORT.md.

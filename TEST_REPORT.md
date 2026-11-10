@@ -2,6 +2,24 @@
 
 This report supersedes the original restricted Windows-session inventory. Installation, mocked launcher regression, GUI, reference preprocessing and full MRI-to-report acceptance are separate scopes.
 
+## Follow-up: RAM allocation and extended GUI inspection
+
+The user authorized increasing WSL RAM if the physical host could support it and requested further GUI inspection.
+
+Windows reports 31.82 GiB physical RAM. The existing .wslconfig was backed up outside Git, its existing settings were preserved, and memory=25GB was added under [wsl2]. Active Ubuntu processes were inspected: they belonged to this setup session, with no running scientific analysis. The project Docker daemon was stopped cleanly. Terminating the distribution alone retained the old VM limit, so WSL was fully stopped and restarted.
+
+Observed after restart: /proc/meminfo reports 26,259,234,816 bytes, or 24.4558 GiB; swap is 7 GiB. The restored Docker daemon reports the same memory, and an actual MELD container Python check reports 24.4558 GiB. doctor --for meld-run now reports meld_recommended_ram=true and only meld_licenses missing (exit 2). The prior 15.5 GiB RAM blocker is resolved. This verifies capacity visibility, not a 24 GiB stress test or MELD prediction. Windows had 4.83 GiB available before the restart; close memory-heavy Windows apps before eventual prediction.
+
+The desktop was unlocked and the real WSLg GUI was reopened. Inspected Application Settings: correct local working directory, structural workflow, CPU/resource controls and CUDA unchecked. FreeSurfer Synth options were disabled as expected. No settings changes were saved during this inspection.
+
+Created local public-t1-qa, scanned the same licensed public DICOM directory, confirmed its automatic 3D T1w association and imported all 192 images as one volume. The GUI showed a green valid-input check and enabled Workflow execution. All 192 imported file content hashes match the source series exactly.
+
+Generated the workflow without executing it. The GUI's expanded step tree showed NIfTI conversion, standard orientation, neck removal, large-FOV cropping, scalp removal, bias correction, masking and saving. The generated SVG is valid XML (9,433 bytes), although Qt logged a transient "Start tag expected" read warning during generation. Execute SWANe Workflow became enabled. No GUI-driven scientific execution or Slicer export is claimed.
+
+GUI limitations: the release's Slicer discovery runs an unbounded find / search; it remained searching and had scanned Windows-mounted filesystems for many minutes in the earlier session. Slicer is still not installed. The subject workflow-preferences popup could not be visually verified reliably through the Windows automation capture (blank capture/invalid transient-window coordinates); it was dismissed with Escape. Main-window import and workflow generation were verified directly.
+
+Only sanitized text evidence is committed. The WSL configuration/backup, imported DICOM data, GUI subject, generated SVG and logs remain local.
+
 ## Environment actually inspected
 
 - Distribution: Ubuntu-20.04, WSL2; Ubuntu 20.04.6 LTS, x86_64; kernel 6.18.58.1-microsoft-standard-WSL2.
@@ -66,7 +84,7 @@ After image installation, actual prepare-meld and test-meld attempts returned 1 
 
 The user stated they have neither personal MELD nor FreeSurfer licence files. No unrelated private folders were searched. No substitute licence was used. MELD preparation, upstream pytest and raw-MRI-to-report execution cannot proceed without them.
 
-WSL has 15.5 GiB RAM, below the configured 24 GiB MELD prediction guard. The current machine allocation has not been changed. Image installation and source/configuration inspection do not establish a scientific MELD pass.
+The initial 15.5 GiB WSL allocation was below the configured 24 GiB MELD prediction guard. The follow-up above resolves that capacity blocker: Ubuntu and the actual container now see 24.4558 GiB. Missing personal licences still block scientific MELD verification. Image installation and capacity/configuration inspection do not establish a scientific pass.
 
 SWANe FreeSurfer/MATLAB/Slicer modules and complete study/report export remain unexecuted. Native Ubuntu 22.04/24.04 laptop reproduction also remains unexecuted.
 

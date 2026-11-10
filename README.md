@@ -100,7 +100,7 @@ bash start.sh test-meld
 bash start.sh run-meld --subject sub-001
 ```
 
-MELD recommends at least 24 GB RAM for CPU prediction. The current WSL allocation is 15.5 GiB; the launcher refuses prediction/pytest below 24 GiB. Use an adequately resourced host. Preparation also requires the personal licences. Inspect pytest collection, skips and output logs; upstream verification may use preprocessed inputs and does not establish a raw-MRI pass.
+MELD recommends at least 24 GB RAM for CPU prediction. This development host now exposes 24.46 GiB to Ubuntu and the actual container after a user-approved WSL limit increase. The RAM readiness check passes; personal licences are still required. The launcher refuses prediction/pytest below 24 GiB. Close memory-heavy Windows applications before eventual prediction on this 32 GB host. Preparation also requires the personal licences. Inspect pytest collection, skips and output logs; upstream verification may use preprocessed inputs and does not establish a raw-MRI pass.
 
 Do not feed SWANe reconstructions to MELD without independent version/format validation. No interoperability is implemented.
 
@@ -111,6 +111,7 @@ Do not feed SWANe reconstructions to MELD without independent version/format val
 - GUI: use Ubuntu desktop/WSLg. The launcher uses XCB; offscreen rendering is not a GUI acceptance test.
 - FSL BET fails with "dc: command not found": `sudo apt install bc dc`. Readiness now checks these commands separately from the upstream version check.
 - Locale error: ensure en_US.utf8 exists.
+- Slicer discovery can take a long time because this SWANe release searches the whole filesystem, including Windows mounts. Once Slicer is installed, set its exact path in Application Settings.
 - Missing Slicer/FreeSurfer: install/configure the specific external dependency before requesting the corresponding analysis/export.
 - Docker unavailable: check daemon/service, current-user socket access and Compose. The isolated WSL development daemon is session-managed; see TEST_REPORT.md for its restart command.
 - Space: Linux and Docker/data filesystems are checked separately. WSL's virtual free space can exceed physical host capacity; also check the Windows drive containing ext4.vhdx.

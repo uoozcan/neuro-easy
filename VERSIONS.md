@@ -5,6 +5,7 @@ These are observed WSL development versions, not a native Ubuntu compatibility c
 | Component | Observed version / immutable source | Validation |
 | --- | --- | --- |
 | Ubuntu | 20.04.6 LTS, WSL2, x86_64 | Actual development host |
+| WSL RAM after follow-up | 24.4558 GiB visible inside Ubuntu and the MELD container; 25 GiB configured ceiling | Actual container capacity check; no prediction stress test |
 | Main SWANe Python | 3.11.14 (isolated venv) | Package, GUI and real T1 reference test |
 | Clean-clone Python | 3.11.18 (new isolated venv) | Exact lock match and package checks |
 | SWANe | 0.2.1.1, PyPI | Published release; newer development features excluded |
