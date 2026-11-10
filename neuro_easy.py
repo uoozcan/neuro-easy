@@ -1,4 +1,4 @@
-"""Local launcher for separate MELD Graph and SWANe workflows (Python 3.10+)."""
+"""Local launcher for independent MELD Graph and SWANe workflows (Python 3.10+)."""
 import argparse
 import datetime as dt
 import json
@@ -7,18 +7,68 @@ from pathlib import Path
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'local'
 CONFIG = STATE / 'config.json'
+SWANE_VERSION = '0.2.1.1'
+
+
+def now():
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def save(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    temporary.write_text(json.dumps(value, indent=2) + '\n')
+    temporary.replace(path)
 
 
 def run(command, cwd=None, capture=False):
-    print('+', ' '.join(map(str, command)), flush=True)
-    return subprocess.run(list(map(str, command)), cwd=cwd, check=True,
-                          text=True, capture_output=capture)
+    command = list(map(str, command))
+    print('+', ' '.join(command), flush=True)
+    logs = STATE / 'logs'
+    logs.mkdir(parents=True, exist_ok=True)
+    log = logs / (dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S%f') + '.log')
+    with log.open('w') as output:
+        output.write(json.dumps({'argv': command, 'cwd': str(cwd or ROOT), 'utc': now()}) + '\n')
+        output.flush()
+        if capture:
+            result = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
+            output.write(result.stdout + result.stderr)
+            if result.returncode:
+                raise subprocess.CalledProcessError(result.returncode, command,
+                                                    result.stdout, result.stderr)
+            return result
+        process = subprocess.Popen(command, cwd=cwd, text=True, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, start_new_session=True)
+        try:
+            for line in process.stdout:
+                print(line, end='', flush=True)
+                output.write(line)
+                output.flush()
+            code = process.wait()
+        except KeyboardInterrupt:
+            os.killpg(process.pid, signal.SIGINT)
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
+            raise
+        finally:
+            process.stdout.close()
+        if code:
+            raise subprocess.CalledProcessError(code, command)
+        return subprocess.CompletedProcess(command, code)
 
 
 def linux():
@@ -26,37 +76,82 @@ def linux():
         raise ValueError('Run this command inside Ubuntu / WSL Ubuntu.')
 
 
-def load():
+def load(required=True):
     if not CONFIG.is_file():
-        raise ValueError('Run configure first. See README.md.')
+        if required:
+            raise ValueError('Run configure --meld-release PATH first. See README.md.')
+        return {'swane_version': SWANE_VERSION}
     return json.loads(CONFIG.read_text())
 
 
 def configure(args):
-    release = Path(args.meld_release).expanduser().resolve()
-    data = Path(args.data).expanduser().resolve()
-    if not (release / 'compose.yml').is_file():
-        raise ValueError('Expected the official extracted MELD release with compose.yml.')
-    if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}', args.swane_version):
-        raise ValueError('Provide an exact numeric SWANe release version.')
-    STATE.mkdir(exist_ok=True)
-    data.mkdir(parents=True, exist_ok=True)
-    CONFIG.write_text(json.dumps({'meld_release': str(release), 'data': str(data),
-                                 'swane_version': args.swane_version}, indent=2))
-    print('Configuration saved locally. No application has been installed yet.')
+    config = load(required=False)
+    if args.swane_version:
+        if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}', args.swane_version):
+            raise ValueError('Provide an exact numeric SWANe release version.')
+        config['swane_version'] = args.swane_version
+    if args.meld_release:
+        release = Path(args.meld_release).expanduser().resolve()
+        if not (release / 'compose.yml').is_file():
+            raise ValueError('Expected the official extracted MELD release with compose.yml.')
+        if config.get('meld_release') != str(release):
+            config.pop('meld_image_digest', None)
+        config['meld_release'] = str(release)
+    if args.data:
+        data = Path(args.data).expanduser().resolve()
+        data.mkdir(parents=True, exist_ok=True)
+        config['data'] = str(data)
+    if args.fsl_dir:
+        fsl = Path(args.fsl_dir).expanduser().resolve()
+        if not (fsl / 'etc/fslversion').is_file():
+            raise ValueError('FSL directory must contain etc/fslversion.')
+        config['fsl_dir'] = str(fsl)
+    if 'meld_release' in config and 'data' not in config:
+        data = STATE / 'meld-data'
+        data.mkdir(parents=True, exist_ok=True)
+        config['data'] = str(data)
+    save(CONFIG, config)
+    print('Configuration saved locally. SWANe and MELD are configured independently.')
+
+
+def runtime_environment(config):
+    tools = STATE / 'tools/docker'
+    if (tools / 'docker').is_file():
+        os.environ['PATH'] = str(tools) + os.pathsep + os.environ.get('PATH', '')
+        os.environ.setdefault('DOCKER_CONFIG', str(STATE / 'docker-config'))
+        os.environ.setdefault('DOCKER_HOST', 'unix://' + str(STATE / 'docker.sock'))
+    fsl = Path(config.get('fsl_dir', STATE / 'fsl-env'))
+    if (fsl / 'etc/fslversion').is_file():
+        os.environ['FSLDIR'] = str(fsl)
+        os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'
+        # FSL wrappers keep its Python out of the SWANe interpreter's PATH.
+        os.environ['PATH'] = str(fsl / 'share/fsl/bin') + os.pathsep + os.environ.get('PATH', '')
+    if swane_python().is_file():
+        os.environ['PATH'] = str(swane_python().parent) + os.pathsep + os.environ.get('PATH', '')
 
 
 def compose(config):
+    if not config.get('meld_release') or not config.get('data'):
+        raise ValueError('Configure --meld-release PATH --data PATH before MELD actions.')
     release = Path(config['meld_release'])
-    override = {'services': {'meld_graph': {'volumes': [
-        {'type': 'bind', 'source': config['data'], 'target': '/data'}]}}}
-    if config.get('meld_image_digest'):
-        override['services']['meld_graph']['image'] = config['meld_image_digest']
-    path = STATE / 'compose.local.json'
-    path.write_text(json.dumps(override, indent=2))
     os.environ['DOCKER_USER'] = f'{os.getuid()}:{os.getgid()}'
-    return ['docker', 'compose', '--project-directory', str(release), '-f',
-            str(release / 'compose.yml'), '-f', str(path)]
+    base = ['docker', 'compose', '--project-directory', str(release),
+            '-f', str(release / 'compose.yml')]
+    # Normalize using Compose itself so relative secrets/mounts resolve upstream.
+    model = json.loads(run(base + ['config', '--format', 'json'], capture=True).stdout)
+    service = model['services']['meld_graph']
+    service.pop('gpus', None)
+    reservations = service.get('deploy', {}).get('resources', {}).get('reservations', {})
+    reservations.pop('devices', None)
+    volumes = [v for v in service.get('volumes', []) if v.get('target') != '/data']
+    volumes.append({'type': 'bind', 'source': config['data'], 'target': '/data'})
+    service['volumes'] = volumes
+    if config.get('meld_image_digest'):
+        service['image'] = config['meld_image_digest']
+    path = STATE / 'compose.cpu.json'
+    save(path, model)
+    # A single normalized file avoids sequence merging retaining a GPU request.
+    return ['docker', 'compose', '--project-directory', str(release), '-f', str(path)]
 
 
 def licenses(config):
@@ -66,118 +161,283 @@ def licenses(config):
             raise ValueError(f'Obtain your own {name} and place it in the MELD release folder.')
 
 
-def doctor(args):
-    checks = {'linux': platform.system() == 'Linux',
-              'python_3_10_plus': sys.version_info >= (3, 10),
-              'machine': platform.machine(),
-              'display_available': bool(os.getenv('DISPLAY') or os.getenv('WAYLAND_DISPLAY')),
-              'docker_command': bool(shutil.which('docker')),
-              'dcm2niix': bool(shutil.which('dcm2niix')),
-              'free_gib_here': round(shutil.disk_usage(ROOT).free / 2**30, 1)}
-    if platform.system() == 'Linux':
-        mem = Path('/proc/meminfo')
-        if mem.exists():
-            checks['ram_gib'] = round(int(re.search(r'MemTotal:\s+(\d+)', mem.read_text())[1]) / 2**20, 1)
-    for name, cmd in [('docker_daemon', ['docker', 'info']),
-                      ('compose_plugin', ['docker', 'compose', 'version'])]:
-        try:
-            checks[name] = subprocess.run(cmd, capture_output=True, timeout=20).returncode == 0
-        except (OSError, subprocess.TimeoutExpired):
-            checks[name] = False
-    checks['configured'] = CONFIG.exists()
-    checks['full_analysis_test'] = 'NOT RUN by doctor'
-    STATE.mkdir(exist_ok=True)
-    (STATE / 'doctor.json').write_text(json.dumps(checks, indent=2))
-    print(json.dumps(checks, indent=2))
-    return 0 if all(checks[k] for k in ('linux', 'python_3_10_plus', 'docker_daemon', 'compose_plugin')) else 2
+def disk_info(path):
+    path = Path(path)
+    while not path.exists() and path != path.parent:
+        path = path.parent
+    return {'path': str(path), 'free_gib': round(shutil.disk_usage(path).free / 2**30, 1)}
+
+
+def require_space(path, minimum):
+    info = disk_info(path)
+    if info['free_gib'] < minimum:
+        raise ValueError(f"Need {minimum} GiB free at {info['path']}; found {info['free_gib']} GiB.")
+    return info
+
+
+def probe(command):
+    try:
+        p = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        return p.returncode == 0, p.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return False, ''
 
 
 def swane_python():
     return STATE / 'swane-env' / 'bin' / 'python'
 
 
+def dependency_report():
+    if not swane_python().is_file():
+        return {'error': 'Run install-swane first.'}
+    script = """
+import json
+from swane.utils.DependencyManager import DependencyManager
+result = {}
+for name in ('dcm2niix', 'fsl', 'freesurfer', 'graphviz'):
+    value = getattr(DependencyManager, 'check_' + name)()
+    result[name] = {'state': value.state.name, 'detail': value.label}
+print(json.dumps(result))
+"""
+    result = run([swane_python(), '-c', script], capture=True)
+    # Nipype may emit informational messages before the final JSON line.
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    missing = [tool for tool in ('dc', 'bc', 'bet', 'robustfov', 'fslmaths',
+               'fslorient', 'fslswapdim') if not shutil.which(tool)]
+    report['t1_runtime'] = {'state': 'MISSING' if missing else 'DETECTED',
+                            'missing_commands': missing,
+                            'detail': 'Install bc and dc with apt; install the partial FSL environment.'}
+    return report
+
+
+def ram_gib():
+    p = Path('/proc/meminfo')
+    if p.exists():
+        return round(int(re.search(r'MemTotal:\s+(\d+)', p.read_text())[1]) / 2**20, 1)
+    return 0
+
+
+def docker_storage():
+    ok, value = probe(['docker', 'info', '--format', '{{.DockerRootDir}}'])
+    if not ok or not value or not Path(value).is_dir():
+        raise ValueError('Cannot check Docker storage locally. Run docker info and check space on its daemon host.')
+    return Path(value)
+
+
+def doctor(args):
+    config = load(required=False)
+    runtime_environment(config)
+    checks = {'linux': platform.system() == 'Linux',
+              'python_3_10_plus': sys.version_info >= (3, 10),
+              'machine': platform.machine(), 'ram_gib': ram_gib(),
+              'display_available': bool(os.getenv('DISPLAY') or os.getenv('WAYLAND_DISPLAY')),
+              'environment_disk': disk_info(STATE),
+              'data_disk': disk_info(config.get('data', STATE)),
+              'swane_package': probe([str(swane_python()), '-c', 'import swane'])[0],
+              'docker_daemon': probe(['docker', 'info'])[0],
+              'compose_plugin': probe(['docker', 'compose', 'version'])[0],
+              'meld_configured': bool(config.get('meld_release')),
+              'full_analysis_test': 'NOT RUN by doctor'}
+    if 'microsoft' in platform.release().lower():
+        checks['wsl_host_disks'] = {str(p): disk_info(p) for p in (Path('/mnt/c'), Path('/mnt/d')) if p.is_dir()}
+        checks['wsl_storage_note'] = 'Check the Windows drive containing ext4.vhdx as well as virtual Linux space.'
+    try:
+        licenses(config)
+        checks['meld_licenses'] = True
+    except (KeyError, ValueError):
+        checks['meld_licenses'] = False
+    if checks['docker_daemon']:
+        try:
+            checks['docker_disk'] = disk_info(docker_storage())
+        except ValueError as e:
+            checks['docker_disk'] = {'error': str(e)}
+    checks['environment_space_ready'] = checks['environment_disk']['free_gib'] >= 5
+    checks['venv_available'] = probe([sys.executable, '-c', 'import venv, ensurepip'])[0]
+    checks['docker_space_ready'] = checks.get('docker_disk', {}).get('free_gib', 0) >= 30
+    checks['meld_data_space_ready'] = checks['data_disk']['free_gib'] >= 10
+    checks['meld_amd64'] = platform.machine() == 'x86_64'
+    required = ['linux', 'python_3_10_plus']
+    scope = args.scope
+    if scope == 'swane-install':
+        required += ['venv_available', 'environment_space_ready']
+    if scope in ('swane-gui', 'swane-analysis', 'all'):
+        required += ['swane_package', 'display_available']
+    if scope in ('swane-analysis', 'all'):
+        try:
+            checks['swane_dependencies'] = dependency_report()
+            checks['swane_t1_dependencies'] = all(
+                checks['swane_dependencies'].get(k, {}).get('state') == 'DETECTED'
+                for k in ('dcm2niix', 'fsl', 't1_runtime'))
+        except (ValueError, OSError, subprocess.CalledProcessError) as e:
+            checks['swane_dependencies'] = {'error': str(e)}
+            checks['swane_t1_dependencies'] = False
+        required += ['swane_t1_dependencies']
+    if scope in ('meld-install', 'meld-run', 'all'):
+        required += ['docker_daemon', 'compose_plugin', 'meld_configured', 'docker_space_ready',
+                     'meld_data_space_ready', 'meld_amd64']
+    if scope in ('meld-run', 'all'):
+        checks['meld_recommended_ram'] = checks['ram_gib'] >= 24
+        checks['meld_pinned'] = bool(config.get('meld_image_digest'))
+        required += ['meld_licenses', 'meld_recommended_ram', 'meld_pinned']
+    checks['requested_scope'] = scope
+    checks['missing'] = [key for key in required if not checks[key]]
+    save(STATE / ('doctor-' + scope + '.json'), checks)
+    print(json.dumps(checks, indent=2))
+    return 2 if checks['missing'] else 0
+
+
 def action(args):
     linux()
-    config = load()
-    if args.command == 'install-swane':
-        run([sys.executable, '-m', 'venv', STATE / 'swane-env'])
-        run([swane_python(), '-m', 'pip', 'install', f"swane=={config['swane_version']}"])
+    config = load(required=False)
+    runtime_environment(config)
+    if args.command == 'install-fsl':
+        command = [sys.executable, ROOT / 'tools/install_fsl.py']
+        if args.conda:
+            command += ['--conda', args.conda]
+        if args.accept_fsl_license:
+            command += ['--accept-fsl-license']
+        run(command)
+    elif args.command == 'validate-swane-t1':
+        run([swane_python(), ROOT / 'tools/validate_swane_t1.py',
+             '--dicom', args.dicom, '--output', args.output])
+    elif args.command == 'install-swane':
+        if sys.version_info < (3, 10):
+            raise ValueError('Use Python >=3.10, or bash start.sh to find an existing supported interpreter.')
+        require_space(STATE, 5)
+        STATE.mkdir(parents=True, exist_ok=True)
+        if not swane_python().is_file():
+            run([sys.executable, '-m', 'venv', STATE / 'swane-env'])
+        run([swane_python(), '-m', 'pip', 'install', 'pip==26.3'])
+        requirements = [f"swane=={config.get('swane_version', SWANE_VERSION)}",
+                        'dcm2niix==1.0.20250506']
+        if args.locked:
+            if sys.version_info[:2] != (3, 11) or config.get('swane_version', SWANE_VERSION) != SWANE_VERSION:
+                raise ValueError('--locked requires Python 3.11 and SWANe 0.2.1.1.')
+            requirements = ['-r', ROOT / 'requirements-swane-py311.lock']
+        run([swane_python(), '-m', 'pip', 'install', '--report',
+             STATE / 'swane-install-report.json'] + requirements)
         result = run([swane_python(), '-m', 'pip', 'freeze'], capture=True)
         (STATE / 'swane-installed.txt').write_text(result.stdout)
-        print('Python package installed. External imaging tools and GUI still require verification.')
+        run([swane_python(), '-m', 'pip', 'check'])
+        print('Python packages installed. Use swane-dependencies, then open-swane.')
     elif args.command == 'swane-smoke':
         run([swane_python(), '-m', 'pip', 'check'])
         run([swane_python(), '-c', 'import swane; print(swane.__file__)'])
-        print('Package checks passed. This does not test a SWANe analysis or GUI.')
+        print('Package checks passed. GUI and scientific workflows require separate checks.')
+    elif args.command == 'swane-dependencies':
+        report = dependency_report()
+        save(STATE / 'swane-dependencies.json', report)
+        print(json.dumps(report, indent=2))
+        if not all(report.get(k, {}).get('state') == 'DETECTED' for k in ('dcm2niix', 'fsl', 't1_runtime')):
+            return 2
     elif args.command == 'open-swane':
         if not (os.getenv('DISPLAY') or os.getenv('WAYLAND_DISPLAY')):
             raise ValueError('No GUI display detected. Use Ubuntu desktop or configure WSLg.')
+        os.environ.setdefault('QT_QPA_PLATFORM', 'xcb')
         run([swane_python(), '-m', 'swane'])
     else:
-        licenses(config)
-        if args.command != 'install-meld' and not config.get('meld_image_digest'):
+        if not config.get('meld_release'):
+            raise ValueError('Run configure --meld-release PATH --data PATH first.')
+        if args.command not in ('install-meld', 'meld-config') and not config.get('meld_image_digest'):
             raise ValueError('Run install-meld first to record the container digest.')
+        if args.command not in ('install-meld', 'meld-config'):
+            licenses(config)
+        if args.command in ('test-meld', 'run-meld') and ram_gib() < 24:
+            raise ValueError('MELD recommends >=24 GiB RAM; this host has less. Use a suitably resourced host.')
         base = compose(config)
-        if args.command == 'install-meld':
+        if args.command == 'meld-config':
             result = run(base + ['config', '--format', 'json'], capture=True)
-            model = json.loads(result.stdout)
-            service = model['services']['meld_graph']
-            if service.get('deploy', {}).get('resources', {}).get('reservations', {}).get('devices') or service.get('gpus'):
-                raise ValueError('For CPU mode remove the GPU reservation from your local release compose.yml as documented upstream.')
-            image = service['image']
+            print(result.stdout)
+        elif args.command == 'install-meld':
+            storage = docker_storage()
+            require_space(storage, 30)
+            require_space(config['data'], 10)
+            model = json.loads(run(base + ['config', '--format', 'json'], capture=True).stdout)
+            image = model['services']['meld_graph']['image']
             run(base + ['pull', 'meld_graph'])
-            digest = json.loads(run(['docker', 'image', 'inspect', image], capture=True).stdout)[0].get('RepoDigests', [])
-            if not digest:
+            inspected = json.loads(run(['docker', 'image', 'inspect', image], capture=True).stdout)[0]
+            digests = inspected.get('RepoDigests', [])
+            if not digests:
                 raise ValueError('Cannot record an immutable registry digest; setup stopped.')
-            config['meld_image_digest'] = digest[0]
-            CONFIG.write_text(json.dumps(config, indent=2))
-            print('MELD image installed and its digest recorded. Next run prepare-meld.')
+            repository = image.split('@')[0].rsplit(':', 1)[0]
+            matches = [d for d in digests if d.split('@')[0] == repository]
+            if not matches:
+                raise ValueError('No registry digest matches the selected image repository.')
+            config['meld_image_digest'] = matches[0]
+            save(CONFIG, config)
+            save(STATE / 'meld-image.json', {k: inspected.get(k) for k in
+                 ('Id', 'RepoDigests', 'Architecture', 'Os', 'Size', 'Config')})
+            print('MELD image installed and pinned. Licences are required before preparation.')
         elif args.command == 'prepare-meld':
+            require_space(config['data'], 10)
             run(base + ['run', '--rm', 'meld_graph', 'python',
                         'scripts/new_patient_pipeline/prepare_classifier.py'])
         elif args.command == 'test-meld':
-            report = STATE / 'meld-test.json'
-            # Clear previous success before executing a new test.
-            report.write_text(json.dumps({'status': 'RUNNING', 'utc': dt.datetime.now(dt.timezone.utc).isoformat()}))
-            try:
-                run(base + ['run', '--rm', 'meld_graph', 'pytest', '-s'])
-            except (subprocess.CalledProcessError, OSError):
-                report.write_text(json.dumps({'status': 'FAILED'}))
-                raise
-            report.write_text(json.dumps({'status': 'PASSED', 'scope': 'upstream MELD pytest; not a SWANe test',
-                                         'utc': dt.datetime.now(dt.timezone.utc).isoformat(),
-                                         'image': config.get('meld_image_digest', 'UNPINNED')}))
+            run(base + ['run', '--rm', 'meld_graph', 'pytest', '-ra', '-s'])
         elif args.command == 'run-meld':
             if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', args.subject):
                 raise ValueError('Subject ID must use letters, numbers, underscores or hyphens.')
             run(base + ['run', '--rm', 'meld_graph', 'python',
                         'scripts/new_patient_pipeline/new_pt_pipeline.py', '-id', args.subject])
+    return 0
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
     p = sub.add_parser('configure')
-    p.add_argument('--meld-release', required=True)
-    p.add_argument('--data', required=True)
-    p.add_argument('--swane-version', default='0.2.1.1')
-    sub.add_parser('doctor')
-    for name in ('install-swane', 'swane-smoke', 'open-swane', 'install-meld', 'prepare-meld', 'test-meld'):
+    p.add_argument('--meld-release')
+    p.add_argument('--data')
+    p.add_argument('--swane-version')
+    p.add_argument('--fsl-dir')
+    p = sub.add_parser('doctor')
+    p.add_argument('--for', dest='scope', choices=('computer', 'swane-install', 'swane-gui',
+                   'swane-analysis', 'meld-install', 'meld-run', 'all'), default='all')
+    p = sub.add_parser('install-swane')
+    p.add_argument('--locked', action='store_true')
+    for name in ('swane-smoke', 'swane-dependencies', 'open-swane',
+                 'meld-config', 'install-meld', 'prepare-meld', 'test-meld'):
         sub.add_parser(name)
+    p = sub.add_parser('install-fsl')
+    p.add_argument('--conda')
+    p.add_argument('--accept-fsl-license', action='store_true')
+    p = sub.add_parser('validate-swane-t1')
+    p.add_argument('--dicom', required=True)
+    p.add_argument('--output', required=True)
     p = sub.add_parser('run-meld')
     p.add_argument('--subject', required=True)
     args = parser.parse_args(argv)
+    record = {'command': args.command, 'status': 'RUNNING', 'utc': now(),
+              'scope': 'launcher action; see command logs for acceptance evidence'}
+    save(STATE / 'last-action.json', record)
+    if args.command == 'test-meld':
+        save(STATE / 'meld-test.json', record)
     try:
         if args.command == 'configure':
             configure(args)
+            code = 0
         elif args.command == 'doctor':
-            return doctor(args)
+            code = doctor(args)
         else:
-            action(args)
-        return 0
-    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+            code = action(args)
+    except KeyboardInterrupt:
+        print('Interrupted. Logs are in local/logs; rerun the failed action to resume.', file=sys.stderr)
+        code = 130
+        record['status'] = 'INTERRUPTED'
+    except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
         print(f'ERROR: {error}', file=sys.stderr)
-        return 1
+        if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+            print(error.stderr, file=sys.stderr)
+        code = error.returncode if isinstance(error, subprocess.CalledProcessError) else 1
+        code = code if code > 0 else 128 - code
+    record.update({'status': record.get('status') if record.get('status') == 'INTERRUPTED'
+                   else ('PASSED' if code == 0 else 'FAILED'), 'exit_code': code, 'finished_utc': now()})
+    save(STATE / 'last-action.json', record)
+    if args.command == 'test-meld':
+        record.update({'scope': 'upstream MELD pytest only; inspect skips and raw-MRI coverage',
+                       'image': load(required=False).get('meld_image_digest', 'UNPINNED')})
+        save(STATE / 'meld-test.json', record)
+    return code
 
 
 if __name__ == '__main__':
