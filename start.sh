@@ -14,7 +14,7 @@ if [[ -z "$python" ]]; then
 fi
 if [[ $# -gt 0 ]]; then exec "$python" neuro_easy.py "$@"; fi
 echo 'Neuro Easy: MELD Graph and SWANe'
-select choice in 'Check this computer' 'Install SWANe Python package' 'Install FSL for T1 reference' 'Check SWANe package' 'Check SWANe dependencies' 'Open SWANe' 'Run SWANe T1 reference' 'Install MELD image' 'Prepare MELD model/test data' 'Run MELD verification' 'Run MELD subject' 'Quit'; do
+select choice in 'Check this computer' 'Install SWANe Python package' 'Install FSL for T1 reference' 'Check SWANe package' 'Check SWANe dependencies' 'Open SWANe' 'Run SWANe T1 reference' 'Install MELD image' 'Prepare MELD model/test data' 'Run MELD verification' 'Run MELD subject' 'Quit' 'Show licence/registration status' 'Import personal licence files' 'Install standalone FreeSurfer for SWANe'; do
   case "$REPLY" in
     1) "$python" neuro_easy.py doctor ;;
     2) "$python" neuro_easy.py install-swane ;;
@@ -34,6 +34,22 @@ select choice in 'Check this computer' 'Install SWANe Python package' 'Install F
     10) "$python" neuro_easy.py test-meld ;;
     11) read -r -p 'Subject ID: ' subject; "$python" neuro_easy.py run-meld --subject "$subject" ;;
     12) exit 0 ;;
-    *) echo 'Choose a number from 1 to 12.'; continue ;;
+    13) "$python" neuro_easy.py license-status ;;
+    14) read -r -p 'FreeSurfer licence path (blank to skip): ' fs_license
+        read -r -p 'MELD licence path (blank to skip): ' meld_license
+        licence_args=()
+        if [[ -n "$fs_license" ]]; then licence_args+=(--freesurfer "$fs_license"); fi
+        if [[ -n "$meld_license" ]]; then licence_args+=(--meld "$meld_license"); fi
+        "$python" neuro_easy.py import-licenses "${licence_args[@]}" ;;
+    15) echo 'Standalone FreeSurfer 7.4.1 for SWANe; MELD retains its bundled 7.2.0.'
+        echo 'Read https://surfer.nmr.mgh.harvard.edu/registration.html'
+        read -r -p 'Type ACCEPT if you personally accept this licence: ' acceptance
+        if [[ "$acceptance" == ACCEPT ]]; then
+          read -r -p 'WSL backing Windows drive mount (e.g. /mnt/c; blank for native Ubuntu): ' host_storage
+          fs_args=(--accept-freesurfer-license)
+          if [[ -n "$host_storage" ]]; then fs_args+=(--host-storage "$host_storage"); fi
+          "$python" neuro_easy.py install-freesurfer "${fs_args[@]}"
+        else echo 'FreeSurfer licence not accepted; installation skipped.'; fi ;;
+    *) echo 'Choose a number from 1 to 15.'; continue ;;
   esac || echo 'Step failed. Read the error above and local/logs before continuing.'
 done

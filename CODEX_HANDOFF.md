@@ -17,7 +17,7 @@ Ubuntu 20.04.6, x86_64, i7-10750H (12 logical CPUs), initially about 15.5 GiB RA
 System Python is 3.8.10. Existing /home/umut/miniconda3/bin/python is 3.11.14 and was used only to create an isolated project venv. Existing conda environments were preserved.
 SWANe 0.2.1.1, dcm2niix and partial FSL 6.0.7.8 are installed in local/. Real WSLg GUI inspection shows dcm2niix/FSL/Graphviz detected.
 Graphviz, xclip, tcsh, Qt/XCB libraries, bc and dc were installed using apt.
-FreeSurfer, MATLAB Runtime and 3D Slicer have not been installed.
+Standalone FreeSurfer for SWANe, MATLAB Runtime and 3D Slicer have not been installed. MELD already bundles FreeSurfer 7.2.0 inside its installed image.
 
 The selected scientific test is SWANe's real T1 reference subworkflow on one licensed public MPRAGE DICOM series. The real reference subworkflow completed with five checked outputs and limited visual QC; TEST_REPORT.md records its timing and acceptance scope. local/swane-t1-validation/validation-full-run.json preserves the full retry, and validation.json records the checksum-aware cached check. The first actual run failed because FSL BET needed dc; that was installed and an actionable readiness check added. The successful retry reused completed Nipype nodes; its observed 1447.89-second runtime is therefore not a fresh uncached whole-pipeline benchmark. A fresh source clone with new SWANe and partial FSL environments also passed dependency/package checks with exact Python/FSL lock matches and 21 launcher tests.
 
@@ -54,3 +54,7 @@ See TEST_REPORT.md for exact observed results, final GitHub publication and rema
 Draft PR: https://github.com/uoozcan/neuro-easy/pull/1 on codex/wsl-install-validation. Source implementation b5e17af801c0ca959c2b75eaf4a28963508315f4 passed GitHub Actions run 42844193187. The draft status reflects incomplete full scientific/native-laptop acceptance. The original CI workflow is preserved because the CLI credential lacks workflow scope; the proposed expanded workflow is only in ignored local/launcher-expanded.yml.
 
 Follow-up GUI inspection imported the 192-image public T1 series into local/swane-work/public-t1-qa and generated the real workflow graph. All imported content hashes match. No GUI analysis was executed. Application Settings were inspected; subject preferences had a capture limitation. Slicer discovery remains an unbounded filesystem search; see TEST_REPORT.md.
+
+## MELD/FreeSurfer activation preparation
+
+Read INSTALLATION_PLAN.md. Personal registration/FreeSurfer acceptance was requested asynchronously; no acceptance or licence paths have been supplied for this phase. The standalone FreeSurfer 7.4.1 installer is prepared and dry-run only, with no software downloaded. It requires explicit --accept-freesurfer-license, checks actual WSL backing-drive space, verifies the upstream archive checksum and stages extraction without replacing existing software. Private import-licenses and license-status commands are implemented; status currently reports both files MISSING. Only syntax is checked, never licence authenticity. Upstream MELD can exit 0 on malformed licence input, so preflight now rejects malformed licence structure before execution. Thirty offline regression cases passed; these are not software/analysis installation passes.

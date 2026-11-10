@@ -154,11 +154,89 @@ def compose(config):
     return ['docker', 'compose', '--project-directory', str(release), '-f', str(path)]
 
 
+def license_syntax(name, content):
+    # Syntax only: personal registration and an operational upstream check are still required.
+    if not content.strip():
+        raise ValueError(f'{name} is empty. Obtain your personal licence from upstream.')
+    if name == 'meld_license.txt':
+        match = re.search(r'License\s*ID[:\s]*([0-9]+)', content, re.IGNORECASE)
+        if not match or len(match.group(1)) != 6:
+            raise ValueError('meld_license.txt does not contain the six-digit License ID required by this MELD release.')
+    elif name == 'license.txt':
+        tokens = ' '.join(line for line in content.splitlines()
+                          if not line.lstrip().startswith('#')).split()
+        if len(tokens) < 4 or '@' not in tokens[0] or not tokens[1].isdigit():
+            raise ValueError('license.txt does not have the expected FreeSurfer licence structure.')
+
+
 def licenses(config):
     for name in ('license.txt', 'meld_license.txt'):
         p = Path(config['meld_release']) / name
-        if not p.is_file() or not p.stat().st_size:
+        if not p.is_file():
             raise ValueError(f'Obtain your own {name} and place it in the MELD release folder.')
+        if p.stat().st_size > 1024 * 1024:
+            raise ValueError(f'{name} is unexpectedly large; choose the licence text file.')
+        license_syntax(name, p.read_text())
+
+
+def import_licenses(args, config):
+    import uuid
+    if not config.get('meld_release'):
+        raise ValueError('Configure the MELD release folder first.')
+    candidates = [('license.txt', args.freesurfer), ('meld_license.txt', args.meld)]
+    candidates = [(name, Path(path).expanduser().resolve()) for name, path in candidates if path]
+    if not candidates:
+        raise ValueError('Provide --freesurfer PATH and/or --meld PATH; never paste licence contents.')
+    prepared = []
+    for name, source in candidates:
+        if not source.is_file() or source.stat().st_size > 1024 * 1024:
+            raise ValueError(f'Choose the personal licence text file for {name}.')
+        content = source.read_text(encoding='utf-8-sig').encode('utf-8')
+        license_syntax(name, content.decode('utf-8'))
+        destination = Path(config['meld_release']) / name
+        if destination.is_symlink():
+            raise ValueError(f'Refusing to replace a symbolic link named {name}.')
+        prepared.append((name, destination, content))
+    # Validate every supplied file before modifying any installed licence.
+    for name, destination, content in prepared:
+        if destination.exists() and destination.read_bytes() != content:
+            backups = STATE / 'license-backups'
+            backups.mkdir(parents=True, exist_ok=True)
+            backup = backups / (uuid.uuid4().hex + '-' + name)
+            fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as stream:
+                stream.write(destination.read_bytes())
+        temporary = destination.with_name('.neuro-easy-' + uuid.uuid4().hex + '.tmp')
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(destination)
+        print(f'Installed personal {name} locally; contents were not logged.')
+    print('File syntax checked only. Run MELD preparation and upstream verification next.')
+
+
+def license_status(config):
+    report = {'scope': 'File syntax only; does not establish licence validity or analysis success.',
+              'files': {}, 'registration': {
+                  'freesurfer': 'https://surfer.nmr.mgh.harvard.edu/registration.html',
+                  'meld': 'https://docs.google.com/forms/d/e/1FAIpQLSdocMWtxbmh9T7Sv8NT4f0Kpev-tmRI-kngDhUeBF9VcZXcfg/viewform'}}
+    for name in ('license.txt', 'meld_license.txt'):
+        p = Path(config.get('meld_release', STATE / 'meld-release')) / name
+        if not p.is_file():
+            report['files'][name] = 'MISSING'
+            continue
+        try:
+            if p.stat().st_size > 1024 * 1024:
+                raise ValueError('Unexpected file size.')
+            license_syntax(name, p.read_text(encoding='utf-8-sig'))
+            report['files'][name] = 'SYNTAX_OK'
+        except (ValueError, OSError):
+            report['files'][name] = 'INVALID_OR_UNREADABLE'
+    save(STATE / 'license-status.json', report)
+    print(json.dumps(report, indent=2))
+    return 0 if all(v == 'SYNTAX_OK' for v in report['files'].values()) else 2
 
 
 def disk_info(path):
@@ -290,7 +368,20 @@ def action(args):
     linux()
     config = load(required=False)
     runtime_environment(config)
-    if args.command == 'install-fsl':
+    if args.command == 'license-status':
+        return license_status(config)
+    elif args.command == 'import-licenses':
+        import_licenses(args, config)
+    elif args.command == 'install-freesurfer':
+        command = [sys.executable, ROOT / 'tools/install_freesurfer.py']
+        if args.plan:
+            command += ['--plan']
+        if args.accept_freesurfer_license:
+            command += ['--accept-freesurfer-license']
+        if args.host_storage:
+            command += ['--host-storage', args.host_storage]
+        run(command)
+    elif args.command == 'install-fsl':
         command = [sys.executable, ROOT / 'tools/install_fsl.py']
         if args.conda:
             command += ['--conda', args.conda]
@@ -400,9 +491,16 @@ def main(argv=None):
                    'swane-analysis', 'meld-install', 'meld-run', 'all'), default='all')
     p = sub.add_parser('install-swane')
     p.add_argument('--locked', action='store_true')
-    for name in ('swane-smoke', 'swane-dependencies', 'open-swane',
+    p = sub.add_parser('import-licenses')
+    p.add_argument('--freesurfer')
+    p.add_argument('--meld')
+    for name in ('license-status', 'swane-smoke', 'swane-dependencies', 'open-swane',
                  'meld-config', 'install-meld', 'prepare-meld', 'test-meld'):
         sub.add_parser(name)
+    p = sub.add_parser('install-freesurfer')
+    p.add_argument('--plan', action='store_true')
+    p.add_argument('--accept-freesurfer-license', action='store_true')
+    p.add_argument('--host-storage')
     p = sub.add_parser('install-fsl')
     p.add_argument('--conda')
     p.add_argument('--accept-fsl-license', action='store_true')

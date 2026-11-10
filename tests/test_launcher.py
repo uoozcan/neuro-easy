@@ -21,7 +21,7 @@ class LauncherTests(unittest.TestCase):
         self.release.mkdir()
         (self.release / 'compose.yml').write_text('services: {}')
         for name in ('license.txt', 'meld_license.txt'):
-            (self.release / name).write_text('test fixture only')
+            (self.release / name).write_text('fixture@example.invalid\n12345\nfixture-key-one\nfixture-key-two\n' if name == 'license.txt' else 'TEST FIXTURE ONLY\nLicense ID: 123456\n')
         self.patches = [patch.object(n, 'STATE', self.state),
                         patch.object(n, 'CONFIG', self.state / 'config.json'),
                         patch.object(n, 'ram_gib', return_value=32)]
@@ -193,6 +193,112 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(n.main(['install-meld']), 0)
         self.assertEqual(n.load()['fsl_dir'], '/configured/while/pulling')
         self.assertEqual(n.load()['meld_image_digest'], 'example/image@sha256:pinned')
+
+    def test_malformed_meld_license_is_rejected_before_zero_exit_upstream(self):
+        (self.release / 'meld_license.txt').write_text('License ID: 123')
+        with patch.object(n, 'linux'), patch.object(n, 'run') as runner:
+            self.assertEqual(n.main(['prepare-meld']), 1)
+            runner.assert_not_called()
+
+    def test_personal_license_import_is_private_and_contents_are_not_printed(self):
+        import io
+        source = Path(self.tmp.name) / 'personal licence.txt'
+        source.write_text('person@example.invalid\n4321\nprivate-fixture-key-a\nprivate-fixture-key-b\n')
+        output = io.StringIO()
+        with patch.object(n, 'linux'), patch('sys.stdout', output):
+            self.assertEqual(n.main(['import-licenses', '--freesurfer', str(source)]), 0)
+        installed = self.release / 'license.txt'
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertEqual(installed.stat().st_mode & 0o777, 0o600)
+        self.assertNotIn('private-fixture', output.getvalue())
+        self.assertNotIn('person@example', output.getvalue())
+
+    def test_invalid_second_license_does_not_replace_first(self):
+        first = Path(self.tmp.name) / 'fs.txt'
+        first.write_text('person@example.invalid\n4321\na\nb\n')
+        second = Path(self.tmp.name) / 'meld.txt'
+        second.write_text('incorrect')
+        original = (self.release / 'license.txt').read_bytes()
+        with patch.object(n, 'linux'):
+            self.assertEqual(n.main(['import-licenses', '--freesurfer', str(first), '--meld', str(second)]), 1)
+        self.assertEqual((self.release / 'license.txt').read_bytes(), original)
+
+    def test_replaced_license_has_private_backup(self):
+        source = Path(self.tmp.name) / 'new meld.txt'
+        source.write_text('TEST FIXTURE ONLY\nLicense ID: 654321\n')
+        original = (self.release / 'meld_license.txt').read_bytes()
+        with patch.object(n, 'linux'):
+            self.assertEqual(n.main(['import-licenses', '--meld', str(source)]), 0)
+        backups = list((self.state / 'license-backups').iterdir())
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_bytes(), original)
+        self.assertEqual(backups[0].stat().st_mode & 0o777, 0o600)
+
+    def test_license_status_does_not_claim_operational_validity(self):
+        with patch.object(n, 'linux'):
+            self.assertEqual(n.main(['license-status']), 0)
+        report = json.loads((self.state / 'license-status.json').read_text())
+        self.assertEqual(report['files']['meld_license.txt'], 'SYNTAX_OK')
+        self.assertIn('does not establish licence validity', report['scope'])
+
+
+class FreeSurferInstallerTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        path = Path(__file__).parents[1] / 'tools/install_freesurfer.py'
+        spec = importlib.util.spec_from_file_location('freesurfer_installer_fixture', path)
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+        self.root = Path(self.tmp.name)
+        self.patches = [
+            patch.object(self.module.launcher, 'STATE', self.root),
+            patch.object(self.module, 'profile', return_value=('20.04', ('fixture.tar.gz', 'expected-md5'))),
+            patch.object(self.module.launcher, 'require_space'),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in reversed(self.patches):
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_no_download_without_personal_acceptance(self):
+        with patch.object(self.module.launcher, 'run') as runner:
+            self.assertEqual(self.module.main([]), 2)
+            runner.assert_not_called()
+
+    def test_checksum_mismatch_prevents_extraction(self):
+        def fake_download(command):
+            Path(command[command.index('--output') + 1]).write_bytes(b'corrupted fixture')
+        with patch.object(self.module.launcher, 'run', side_effect=fake_download), patch.object(self.module, 'extract') as extractor:
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                self.module.main(['--accept-freesurfer-license', '--host-storage', str(self.root)])
+            extractor.assert_not_called()
+
+    def test_existing_installation_is_never_replaced(self):
+        target = self.root / 'apps/freesurfer-7.4.1'
+        target.mkdir(parents=True)
+        (target / 'existing').write_text('preserve')
+        with patch.object(self.module.launcher, 'run') as runner:
+            with self.assertRaisesRegex(ValueError, 'already exists'):
+                self.module.main(['--accept-freesurfer-license', '--host-storage', str(self.root)])
+            runner.assert_not_called()
+        self.assertEqual((target / 'existing').read_text(), 'preserve')
+
+    def test_archive_traversal_is_rejected(self):
+        import io
+        import tarfile
+        archive = self.root / 'unsafe.tar.gz'
+        with tarfile.open(archive, 'w:gz') as bundle:
+            item = tarfile.TarInfo('../escape')
+            item.size = 1
+            bundle.addfile(item, io.BytesIO(b'x'))
+        destination = self.root / 'stage'
+        destination.mkdir()
+        with self.assertRaises((ValueError, tarfile.TarError)):
+            self.module.extract(archive, destination)
+        self.assertFalse((self.root / 'escape').exists())
 
 
 if __name__ == '__main__':

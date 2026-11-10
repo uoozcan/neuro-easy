@@ -75,6 +75,16 @@ This calls the installed release's actual ref_workflow: DICOM conversion, radiol
 
 Inspect `local/swane-t1-validation/outputs/`, `validation.json` and `mask-qc.png`. Automated checks require nonempty finite images, matching output geometry, a nonempty binary mask and consistency of the masked reference. A human must inspect the mask and image orientation. A passing subworkflow does not establish scientific accuracy or complete-study acceptance. Never commit these images or logs.
 
+## MELD and FreeSurfer continuation
+
+Follow [INSTALLATION_PLAN.md](INSTALLATION_PLAN.md) for personal registration, private licence import, activation of the already installed MELD image and the separately prepared standalone FreeSurfer 7.4.1 profile. The standalone installer is prepared and guarded; it has not been executed yet.
+
+```bash
+bash start.sh license-status
+bash start.sh import-licenses --freesurfer /path/license.txt --meld /path/meld_license.txt
+bash start.sh install-freesurfer --plan --host-storage /mnt/c
+```
+
 ## MELD Graph CPU
 
 Install Docker Engine/Compose using the [official Ubuntu guide](https://docs.docker.com/engine/install/ubuntu/) or enable Docker Desktop's WSL integration. Verify `docker info`, `docker compose version` and `docker run --rm hello-world` as your Ubuntu user.

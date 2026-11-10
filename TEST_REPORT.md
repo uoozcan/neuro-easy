@@ -101,3 +101,11 @@ The custom subnet avoids WSL's startup warning about 172.17.176.0/20 overlapping
 ## Publication
 
 Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. GitHub Actions run 42842223591 passed the existing Ubuntu 22.04/Python 3.10 launcher tests and Bash syntax check for commit 3d4ad589466791007cf834fb53158c9c8b515f66. The proposed workflow expansion could not be pushed because the CLI OAuth credential lacks workflow scope, so the original workflow is preserved. Implementation commit b5e17af801c0ca959c2b75eaf4a28963508315f4 passed GitHub Actions run 42844193187, including the 21-test suite and Bash syntax check. The completed real-MRI and container evidence is recorded above. Subsequent publication changes update documentation only; the current PR head and its checks are visible on GitHub. No full scientific end-to-end pass is claimed.
+
+## MELD/FreeSurfer activation preparation — observed checks
+
+The user requested planning/execution of MELD and FreeSurfer installation. The existing MELD image already bundles FreeSurfer 7.2.0. Rechecked official release/licence documentation and prepared INSTALLATION_PLAN.md. A separate FreeSurfer 7.4.1 profile is for SWANe, not a replacement for the bundled MELD tool.
+
+Actual standalone installer --plan succeeded for Ubuntu 20.04 and showed 844.2 GiB virtual Linux free space / 85.8 GiB backing-drive free space. Running the standalone installer without explicit personal FreeSurfer acceptance returned 2 before downloading. No FreeSurfer archive has been downloaded or unpacked in this phase. Actual licence status reports both configured files MISSING. Personal registration/acceptance and the exact saved file paths are pending from the user.
+
+Thirty offline tests passed on the installed Ubuntu Python 3.11 environment, including new tests for private licence import/backups, all-files-before-write validation, malformed MELD licence rejection, explicit acceptance, corrupted download rejection, preserving existing installation files and archive traversal rejection. Bash syntax, menu quit, Python compilation and git diff checks passed. All application/network calls are mocked in the installer regression tests. No additional MELD or FreeSurfer scientific pass is claimed.
