@@ -1,52 +1,45 @@
 # MELD and FreeSurfer installation/activation plan
 
-Status checked 2026-11-10. This continues the existing Ubuntu WSL installation.
+Updated 2026-11-10. Continue the existing Ubuntu WSL installation; do not reinstall MELD.
 
 ## Versions and separation
 
 | Use | Version | Current state |
 | --- | --- | --- |
-| MELD Graph | v2.2.7 CPU, pinned registry digest in VERSIONS.md | Image installed; runtime imports/Compose/RAM checked |
-| FreeSurfer used by MELD | 7.2.0 inside the existing MELD image | Files already bundled; personal licence and operational checks pending |
-| Standalone FreeSurfer for SWANe | 7.4.1 official Ubuntu 20.04 archive | Installer prepared/dry-run only; not downloaded or installed |
-| SWANe | 0.2.1.1 | Already installed and tested as described in TEST_REPORT.md |
+| MELD Graph | v2.2.7 CPU, pinned digest in VERSIONS.md | Image installed; imports/Compose/RAM checked |
+| FreeSurfer used by MELD | 7.2.0 inside the MELD image | Personal licence imported; actual MRI format roundtrip passed |
+| Standalone FreeSurfer for SWANe | 7.4.1 official Ubuntu 20.04 DEB | Package download/installation in progress; see TEST_REPORT.md for final observed state |
+| SWANe | 0.2.1.1 | Installed; T1 reference test and GUI evidence in TEST_REPORT.md |
 
-Do not substitute standalone FreeSurfer 7.4.1 into MELD. The selected MELD source explicitly rejects 7.3/7.4; it uses the bundled 7.2.0. A separate native installation is not needed merely to run MELD's Docker workflow.
+MELD's selected source rejects FreeSurfer 7.3/7.4. It retains its bundled 7.2.0 regardless of the host SWANe setup. No SWANe-to-MELD handoff is implemented.
 
-## 1. Complete personal registration
+## 1. Personal registration
 
-The actual user must read/accept the terms and register personally:
+The user completed [FreeSurfer registration](https://surfer.nmr.mgh.harvard.edu/registration.html). The genuine emailed licence was imported privately with mode 600. Its contents and the user's contact details are excluded from Git.
 
-- [FreeSurfer registration and licence](https://surfer.nmr.mgh.harvard.edu/registration.html): receive your personal license.txt.
-- [MELD Graph registration](https://docs.google.com/forms/d/e/1FAIpQLSdocMWtxbmh9T7Sv8NT4f0Kpev-tmRI-kngDhUeBF9VcZXcfg/viewform): receive meld_license.txt.
+The user also completed [MELD registration](https://docs.google.com/forms/d/e/1FAIpQLSdocMWtxbmh9T7Sv8NT4f0Kpev-tmRI-kngDhUeBF9VcZXcfg/viewform). The genuine emailed meld_license.txt was imported with mode 600. Both syntax checks pass. The official data archive was SHA-256 verified and extracted; upstream setup with --skip-download-data succeeded. Upstream pytest is running; see TEST_REPORT.md for its final observed result. Never invent registrations or substitute licences.
 
-Do not paste licence contents into chat or GitHub. Save the two files locally and give the assistant their exact paths. No licence file or acceptance has been invented. FSL acceptance already provided earlier is separate from FreeSurfer acceptance.
-
-The configured MELD licence destination in this WSL checkout is:
+Configured licence directory:
 `/home/umut/projects/neuro-easy/local/meld-release/`.
 
-For access from Windows Explorer:
+From Windows Explorer:
 `\\wsl.localhost\Ubuntu-20.04\home\umut\projects\neuro-easy\local\meld-release`.
 
-## 2. Import licences privately
+## 2. Licence import for another machine
 
 ```bash
 cd /home/umut/projects/neuro-easy
 bash start.sh license-status
-bash start.sh import-licenses \
-  --freesurfer /path/to/your/license.txt \
-  --meld /path/to/your/meld_license.txt
+bash start.sh import-licenses --meld /path/to/your/meld_license.txt
 ```
 
-Each option may be supplied separately as its file becomes available. Windows paths must be expressed as WSL paths, such as /mnt/c/Users/.../Downloads/license.txt.
+FreeSurfer can also be imported separately with --freesurfer /path/license.txt. The importer checks all supplied files before writing, normalizes an optional BOM, uses mode 600 and privately backs up replaced files. Syntax checks do not prove operational validity. Never paste licence contents into chat or GitHub.
 
-The importer checks all supplied files before changing either installed file, removes an optional UTF-8 BOM, installs with mode 600, and privately backs up any replaced file under ignored local/. Contents are never printed. File syntax checks do not establish registration validity or analysis success. An operational upstream check is still required.
+Upstream MELD can exit 0 on malformed licence input; the launcher rejects malformed/missing six-digit MELD License IDs before executing upstream.
 
-MELD's upstream licence module can exit with code 0 on malformed input; the launcher therefore rejects a missing/non-six-digit MELD License ID before calling upstream. FreeSurfer licence structure is checked conservatively without printing the values.
+## 3. Activate and validate MELD
 
-## 3. Activate and validate the existing MELD installation
-
-Once both genuine personal licence files are installed:
+For a new machine, once both personal licences are present, run sequentially:
 
 ```bash
 bash start.sh doctor --for meld-run
@@ -54,15 +47,19 @@ bash start.sh prepare-meld
 bash start.sh test-meld
 ```
 
-Execute these sequentially. Preparation downloads upstream models and official test data. Capture actual exit codes, model/test-data paths, runtime and resource use. Inspect pytest collection, failures and skips. Upstream verification may reuse preprocessed input; a pass does not establish raw-MRI reconstruction.
+The observed official data archive is 701,224,128 bytes with SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466. The first slow container download was deliberately stopped after preserving partial bytes; WSL curl resumed the same official URL, and the digest matched GitHub before extraction. Upstream setup was then run with --skip-download-data.
 
-Then run one independently licensed/public/deidentified raw-MRI subject through MELD's documented input layout. Check nonempty prediction volumes, geometry, reports and visual reconstruction/registration quality before claiming the raw-MRI workflow passed. Do not reuse SWANe FreeSurfer surfaces without independent compatibility validation.
+Capture actual exit codes, model/test-data paths, runtime/resource observations, and pytest collection/failures/skips. Upstream verification may use preprocessed inputs and does not prove a raw-MRI reconstruction pass.
 
-The current WSL ceiling is 25 GiB; Ubuntu and an actual container expose 24.4558 GiB. Close memory-heavy Windows applications before prediction on this 31.82 GiB physical host. Do not run memory-heavy SWANe/FreeSurfer and MELD jobs concurrently.
+Then run an independently licensed/public/deidentified raw subject using MELD's documented input layout. Inspect predictions, geometry, reports and reconstruction/registration quality before claiming raw-MRI-to-report acceptance. The healthy public T1 used for installation checks is not an FCD detection accuracy benchmark.
 
-## 4. Install standalone FreeSurfer for SWANe
+Ubuntu and the actual container expose 24.4558 GiB RAM under the 25 GiB WSL ceiling. Avoid simultaneous memory-heavy imaging jobs. Native Ubuntu reproduction remains separate.
 
-Prepared profile: official FreeSurfer 7.4.1 Ubuntu 20.04 archive, approximately 8.9 GB compressed, separate destination local/apps/freesurfer-7.4.1. The dry-run observed 844.2 GiB virtual Linux free space and 85.8 GiB on the actual Windows backing drive. Recheck immediately before downloading; the installer requires at least 40 GiB in both locations.
+## 4. Standalone FreeSurfer for SWANe
+
+Use the vendor-supported Ubuntu DEB installer, rather than unpacking a tar archive or unpacking the DEB manually. The prior archive installer was prepared but never executed.
+
+The pinned 7.4.1 Ubuntu 20 package is 6,687,701,644 bytes, approximately 6.23 GiB. Its official MD5 is 3f488ddc5c1a19fe23bb9cbe2c9f457f. The Ubuntu 22 profile uses MD5 bfe85dd76677cfb7ca2b247b9ac6148e. SHA-256 is also recorded after downloading.
 
 ```bash
 bash start.sh install-freesurfer --plan --host-storage /mnt/c
@@ -70,16 +67,25 @@ bash start.sh install-freesurfer --plan --host-storage /mnt/c
 bash start.sh install-freesurfer --accept-freesurfer-license --host-storage /mnt/c
 ```
 
-The installer selects the official Ubuntu 20.04/22.04 x86_64 profile, resumes downloads, verifies the upstream published MD5 and records SHA-256. It safely extracts into project-local staging and refuses to replace an existing installation. It never changes system Python, conda base, .bashrc or the MELD container.
+The installer checks 40 GiB free in the download/system filesystems and WSL's actual backing drive. It verifies checksum and package name/version/architecture before invoking apt. Ubuntu resolves dependencies through apt-get with --no-remove and --no-install-recommends; installation requires sudo. Existing FreeSurfer software is never silently replaced. Downloads remain under ignored local/downloads; the official package installs under /usr/local/freesurfer/7.4.1. System package installation is distinct from the isolated SWANe Python environment.
 
-The published Ubuntu 20.04 archive MD5 is f735655a88b0a5e05bef4ab73d991e3d. MD5 here is an upstream download-integrity check; the observed SHA-256 is recorded separately. Full download/extraction remains unexecuted until actual licence acceptance is provided.
+For download/verification only, add --download-only. A package-verified status is not an installation or runtime pass.
 
-## 5. Configure/test standalone tools after unpacking
+## 5. Configure and check standalone tools
 
-Review the installed SetUpFreeSurfer.sh, then use its official setup in a dedicated terminal with a separate SUBJECTS_DIR. Point FS_LICENSE to your own personal licence file. Keep this shell separate from MELD.
+Review the installed official setup script, then configure the launcher:
 
 ```bash
-export FREESURFER_HOME="$PWD/local/apps/freesurfer-7.4.1"
+bash start.sh configure --freesurfer-dir /usr/local/freesurfer/7.4.1
+bash start.sh swane-dependencies
+```
+
+The launcher sources the official setup in a child shell, points FS_LICENSE to the imported personal licence unless already supplied, uses ignored local/swane-freesurfer-subjects by default, and reapplies the SWANe/FSL executable paths. It does not modify .bashrc or the MELD image.
+
+For a dedicated manual terminal:
+
+```bash
+export FREESURFER_HOME=/usr/local/freesurfer/7.4.1
 export FS_LICENSE="$PWD/local/meld-release/license.txt"
 mkdir -p "$PWD/local/swane-freesurfer-subjects"
 export SUBJECTS_DIR="$PWD/local/swane-freesurfer-subjects"
@@ -87,18 +93,12 @@ source "$FREESURFER_HOME/SetUpFreeSurfer.sh"
 recon-all -version
 ```
 
-Check runtime shared libraries and an official licence-requiring MRI utility test before claiming operational readiness. Then run the installed SWANe release's dependency checks in that correctly configured environment. MATLAB Runtime and Slicer are separate module/export dependencies; install only from their official sources when the selected analysis needs them. FreeSurfer 7.4.1 does not enable SWANe's newer >=8.1 Synth options.
+Check shared libraries, real licence-requiring MRI commands and SWANe detection. A version or format conversion test is not cortical reconstruction. Run actual MRI reconstruction and inspect its outputs/QC before claiming that scope.
 
-A version command, unpacked binaries, a package import or an offline test is not a reconstruction pass. Classical recon-all and any SWANe FreeSurfer module must receive actual MRI validation and visual QC.
+FreeSurfer 7.4.1 does not enable SWANe's >=8.1 Synth options. MATLAB Runtime and Slicer remain separate dependencies for applicable modules/export.
 
-## Evidence and next resume
+## Evidence and resume
 
-The current software, RAM, GUI and T1-reference evidence is in TEST_REPORT.md.
-The two personal licence files are still absent from the configured MELD destination.
-Registration/acceptance questions are pending with the user.
-No licence-requiring MELD/FreeSurfer scientific step has been claimed as passed.
+TEST_REPORT.md distinguishes offline mocks, installed applications, GUI checks, MRI preprocessing and complete scientific workflows. Keep MRI data, licences, models, logs, environments and private registration screenshots out of Git.
 
-Official sources: [MELD Docker installation](https://meld-graph.readthedocs.io/en/latest/install_docker.html),
-[FreeSurfer download/install](https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall),
-[FreeSurfer Linux setup](https://surfer.nmr.mgh.harvard.edu/fswiki/LinuxInstall),
-[official release archives/checksums](https://surfer.nmr.mgh.harvard.edu/fswiki/rel7downloads).
+Official sources: [MELD Docker installation](https://meld-graph.readthedocs.io/en/latest/install_docker.html), [FreeSurfer Linux setup](https://surfer.nmr.mgh.harvard.edu/fswiki/LinuxInstall), [official release packages/checksums and package-install guidance](https://surfer.nmr.mgh.harvard.edu/fswiki/rel7downloads).

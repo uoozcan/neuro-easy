@@ -1,5 +1,23 @@
 # Verification report — 2026-11-10
 
+## Licence activation and installation follow-up — in progress
+
+This section supersedes the earlier missing-licence blocker. The user personally completed both upstream registrations. Genuine emailed FreeSurfer and MELD licence files were privately imported with mode 600; their contents and registration details are not committed. Both syntax checks pass. An actual licensed FreeSurfer 7.2.0 MRI format roundtrip in the pinned MELD image also passed: shape (192, 256, 170), finite data, identical voxel values, maximum affine rounding difference 7.62939453125e-06. This verifies conversion/licence operation, not reconstruction or MELD prediction.
+
+Official MELD data archive: 701,224,128 bytes, SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466, matching GitHub's published asset digest. The slow initial container download was deliberately stopped after preserving partial bytes. WSL curl resumed the same official URL, the digest was verified, and 112 entries / 1,567,506,466 uncompressed bytes were extracted without overwriting prior data. Upstream prepare_classifier.py --skip-download-data then exited 0. Private provenance and an integrity inventory remain under local/meld-data/provenance.
+
+Actual doctor --for meld-run now exits 0 with no missing prerequisites. Full upstream pytest (including slow tests) collected 17 items and is currently RUNNING at prediction/saliency. It has produced new prediction datasets; the original archive only supplied expected/reference predictions. No final pytest or raw-MRI-to-report pass is claimed. Upstream's prediction test uses --no_report and preprocessed surfaces, so even a final pytest pass will not establish report generation or raw reconstruction.
+
+A separate real bundled FreeSurfer 7.2.0 autorecon1 on the licensed public original T1 is RUNNING, past two bias-correction passes and into normalization/registration. It is a first-stage check, not complete cortical reconstruction and not the standalone SWANe installation. Log: local/logs/freesurfer-bundled-autorecon1.log.
+
+Rechecked upstream's package guidance and replaced the unexecuted tar installer with official Ubuntu DEBs via apt. The Ubuntu 20.04 FreeSurfer 7.4.1 package is 6,687,701,644 bytes; official MD5 3f488ddc5c1a19fe23bb9cbe2c9f457f matched, and observed SHA-256 is 2046cdafb6939ac076e0443794d793d4ffbacf83b01e3398ce9046ffa5f4e4f7. Official apt installation has started and is fetching its Ubuntu dependencies. Final installation, shared-library, licensed standalone MRI and new SWANe detection checks are still pending.
+
+Thirty-three offline launcher regression cases pass. The new cases cover package identity/checksum rejection, preserving existing software, failed apt status, and MELD independence from optional host FreeSurfer setup. Bash syntax, Python compilation and git diff checks pass. External application/network calls in these regression tests are mocked.
+
+Resource observations: the MELD test used all logical CPUs initially; its quota was reduced to eight during the run to preserve desktop responsiveness. Samples observed about 13.5 GiB at one point, but polling timed out and left a gap before continuous sampling resumed, so the true peak is unmeasured. Large duplicate download-piece cache coincided with approximately 1.2 GiB Windows free memory. Clean cache was released once globally and later specifically for completed download pieces; Microsoft's documented Linux memory compaction was also requested without restarting WSL or stopping calculations. Windows free memory improved in a later observation. Timing is observational under concurrent installation/tests and memory troubleshooting, not a controlled performance benchmark. [Microsoft memory-reclaim guidance](https://devblogs.microsoft.com/commandline/memory-reclaim-in-the-windows-subsystem-for-linux-2/).
+
+GUI follow-up is incomplete: selected WSLg window capture initially timed out; refreshed selection later returned an unrelated foreground surface and activating the SWANe target timed out. No input was sent to the unrelated surface and no new GUI pass is claimed. Retry with the installed environment and a reliably visible target; do not infer visual success from terminal checks.
+
 This report supersedes the original restricted Windows-session inventory. Installation, mocked launcher regression, GUI, reference preprocessing and full MRI-to-report acceptance are separate scopes.
 
 ## Follow-up: RAM allocation and extended GUI inspection

@@ -1,23 +1,23 @@
-"""Prepare/install isolated FreeSurfer 7.4.1 for SWANe; MELD retains bundled 7.2.0."""
+"""Install the official Ubuntu FreeSurfer 7.4.1 package; MELD retains bundled 7.2.0."""
 import argparse
 import hashlib
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import platform
 import subprocess
 import sys
-import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import neuro_easy as launcher
 
 VERSION = '7.4.1'
+TARGET = Path('/usr/local/freesurfer/7.4.1')
 LICENCE_URL = 'https://surfer.nmr.mgh.harvard.edu/registration.html'
 PROFILES = {
-    '20.04': ('freesurfer-linux-ubuntu20_amd64-7.4.1.tar.gz', 'f735655a88b0a5e05bef4ab73d991e3d'),
-    '22.04': ('freesurfer-linux-ubuntu22_amd64-7.4.1.tar.gz', '4275a307a1a91043587f659389b3e9a8'),
+    '20.04': ('freesurfer_ubuntu20-7.4.1_amd64.deb', '3f488ddc5c1a19fe23bb9cbe2c9f457f'),
+    '22.04': ('freesurfer_ubuntu22-7.4.1_amd64.deb', 'bfe85dd76677cfb7ca2b247b9ac6148e'),
 }
 
 
@@ -44,29 +44,34 @@ def checksums(path):
     return md5.hexdigest(), sha256.hexdigest()
 
 
-def extract(archive, destination):
-    if not hasattr(tarfile, 'data_filter'):
-        raise ValueError('Use an updated Python with tarfile.data_filter for safe extraction.')
-    def only_freesurfer(member, target):
-        if not PurePosixPath(member.name).parts or PurePosixPath(member.name).parts[0] != 'freesurfer':
-            raise ValueError('Archive member is outside the expected freesurfer directory.')
-        return tarfile.data_filter(member, target)
-    with tarfile.open(archive, 'r:gz') as bundle:
-        bundle.extractall(destination, filter=only_freesurfer)
+def installed_package():
+    result = subprocess.run(
+        ['dpkg-query', '-W', '-f=${Status} ${Version}', 'freesurfer'],
+        text=True, capture_output=True, check=False)
+    return result.stdout.strip() if result.returncode == 0 else ''
+
+
+def validate_package(path):
+    result = launcher.run(['dpkg-deb', '--show', '--showformat=${Package} ${Version} ${Architecture}', path],
+                          capture=True)
+    if result.stdout.strip() != 'freesurfer 7.4.1 amd64':
+        raise ValueError('Unexpected FreeSurfer package name, version or architecture.')
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--plan', action='store_true', help='Print the selected package/storage plan; download nothing.')
+    parser.add_argument('--plan', action='store_true', help='Print package/storage plan; download nothing.')
+    parser.add_argument('--download-only', action='store_true', help='Verify the package without installing it.')
     parser.add_argument('--accept-freesurfer-license', action='store_true')
     parser.add_argument('--host-storage', type=Path, help='Windows drive mount backing WSL, e.g. /mnt/c.')
     args = parser.parse_args(argv)
     release, (filename, expected_md5) = profile()
     state = launcher.STATE
-    target = state / 'apps' / ('freesurfer-' + VERSION)
     url = 'https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/' + VERSION + '/' + filename
     plan = {'version': VERSION, 'ubuntu': release, 'url': url, 'upstream_md5': expected_md5,
-            'target': str(target), 'minimum_free_gib': 40, 'disk': launcher.disk_info(state),
+            'target': str(TARGET), 'method': 'official DEB with apt-get; sudo required',
+            'minimum_free_gib': 40, 'disk': launcher.disk_info(state),
+            'system_disk': launcher.disk_info(TARGET),
             'licence': LICENCE_URL, 'operational_license_file_required': True,
             'scope': 'Standalone SWANe/classic FreeSurfer; never substituted into MELD.'}
     if args.host_storage:
@@ -81,47 +86,54 @@ def main(argv=None):
     if 'microsoft' in platform.release().lower() and not args.host_storage:
         raise ValueError('For WSL, provide --host-storage for the Windows drive containing ext4.vhdx.')
     launcher.require_space(state, 40)
+    launcher.require_space(TARGET, 40)
     if args.host_storage:
         launcher.require_space(args.host_storage, 40)
-    if target.exists():
-        raise ValueError('Target already exists. Inspect/resume the recorded installation; existing files will not be replaced.')
+    package_state = installed_package()
+    if TARGET.exists() or 'install ok installed' in package_state:
+        raise ValueError('FreeSurfer already exists. Inspect the recorded installation; existing software will not be replaced.')
     downloads = state / 'downloads'
     downloads.mkdir(parents=True, exist_ok=True)
-    archive = downloads / filename
-    partial = archive.with_suffix(archive.suffix + '.part')
-    if not archive.is_file():
+    package = downloads / filename
+    partial = package.with_suffix(package.suffix + '.part')
+    if not package.is_file():
         launcher.run(['curl', '--fail', '--location', '--retry', '3', '--connect-timeout', '30',
                       '--continue-at', '-', '--output', partial, url])
+        print('Verifying downloaded FreeSurfer package checksums; this may take several minutes.', flush=True)
         observed_md5, observed_sha256 = checksums(partial)
         if observed_md5 != expected_md5:
-            raise ValueError('FreeSurfer archive checksum mismatch. Extraction was not started.')
-        partial.replace(archive)
-    observed_md5, observed_sha256 = checksums(archive)
-    if observed_md5 != expected_md5:
-        raise ValueError('FreeSurfer archive checksum mismatch. Extraction was not started.')
-    staging = target.with_name('.' + target.name + '.partial')
-    marker = staging / '.neuro-easy-staging.json'
-    if staging.exists() and (not marker.is_file() or
-                             json.loads(marker.read_text()).get('archive_sha256') != observed_sha256):
-        raise ValueError('Unrecognized staging directory. Inspect it before continuing.')
-    staging.mkdir(parents=True, exist_ok=True)
-    launcher.save(marker, {'archive_sha256': observed_sha256})
-    extract(archive, staging)
-    home = staging / 'freesurfer'
-    if not (home / 'SetUpFreeSurfer.sh').is_file() or not (home / 'bin/recon-all').is_file():
-        raise ValueError('Extracted archive is incomplete; required upstream files are absent.')
-    home.rename(target)
+            raise ValueError('FreeSurfer package checksum mismatch. Installation was not started.')
+        partial.replace(package)
+    else:
+        print('Verifying cached FreeSurfer package checksums; this may take several minutes.', flush=True)
+        observed_md5, observed_sha256 = checksums(package)
+        if observed_md5 != expected_md5:
+            raise ValueError('FreeSurfer package checksum mismatch. Installation was not started.')
+    validate_package(package)
+    record = {**plan, 'package_sha256': observed_sha256, 'status': 'PACKAGE_VERIFIED',
+              'acceptance': 'Package integrity only. Installation/licence/runtime checks remain required.'}
+    launcher.save(state / 'freesurfer-install.json', record)
+    if args.download_only:
+        print('Official package verified; not installed.')
+        return 0
+    # Let Ubuntu resolve upstream dependencies. Refuse any package removals.
+    launcher.run(['apt-get', '--simulate', '--no-remove', '--no-install-recommends', 'install', package])
+    privilege = [] if os.geteuid() == 0 else ['sudo', '--']
+    subprocess.run(list(map(str, privilege + ['apt-get', '--yes', '--no-remove', '--no-install-recommends',
+                                             'install', package])), check=True)
+    if installed_package() != 'install ok installed ' + VERSION or not (TARGET / 'SetUpFreeSurfer.sh').is_file():
+        raise ValueError('Package installation did not produce the expected FreeSurfer version/setup.')
     launcher.save(state / 'freesurfer-install.json', {
-        **plan, 'archive_sha256': observed_sha256, 'status': 'UNPACKED',
-        'acceptance': 'Files installed only. Licence, environment setup and operational checks remain required.'})
-    print('Official files unpacked locally. Personal licence and operational validation remain required.')
-    print('Standalone FREESURFER_HOME: ' + str(target))
+        **record, 'status': 'PACKAGE_INSTALLED',
+        'acceptance': 'Ubuntu package installed. Personal licence and operational validation remain required.'})
+    print('Official Ubuntu package installed. Personal licence and operational validation remain required.')
+    print('Standalone FREESURFER_HOME: ' + str(TARGET))
     return 0
 
 
 if __name__ == '__main__':
     try:
         sys.exit(main())
-    except (ValueError, OSError, subprocess.CalledProcessError, tarfile.TarError) as error:
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print('ERROR: ' + str(error), file=sys.stderr)
         sys.exit(error.returncode if isinstance(error, subprocess.CalledProcessError) else 1)

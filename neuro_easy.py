@@ -106,6 +106,11 @@ def configure(args):
         if not (fsl / 'etc/fslversion').is_file():
             raise ValueError('FSL directory must contain etc/fslversion.')
         config['fsl_dir'] = str(fsl)
+    if args.freesurfer_dir:
+        home = Path(args.freesurfer_dir).expanduser().resolve()
+        if not (home / 'SetUpFreeSurfer.sh').is_file():
+            raise ValueError('FreeSurfer directory must contain its official SetUpFreeSurfer.sh.')
+        config['freesurfer_dir'] = str(home)
     if 'meld_release' in config and 'data' not in config:
         data = STATE / 'meld-data'
         data.mkdir(parents=True, exist_ok=True)
@@ -114,7 +119,26 @@ def configure(args):
     print('Configuration saved locally. SWANe and MELD are configured independently.')
 
 
-def runtime_environment(config):
+def runtime_environment(config, include_freesurfer=False):
+    if include_freesurfer and config.get('freesurfer_dir'):
+        home = Path(config['freesurfer_dir'])
+        if not (home / 'SetUpFreeSurfer.sh').is_file():
+            raise ValueError('Configured FreeSurfer setup is absent; check --freesurfer-dir.')
+        environment = dict(os.environ, FREESURFER_HOME=str(home))
+        licence = Path(config.get('meld_release', STATE / 'meld-release')) / 'license.txt'
+        if licence.is_file():
+            environment.setdefault('FS_LICENSE', str(licence))
+        subjects = STATE / 'swane-freesurfer-subjects'
+        subjects.mkdir(parents=True, exist_ok=True)
+        environment.setdefault('SUBJECTS_DIR', str(subjects))
+        # Read the vendor setup in a child shell; never edit the user's shell profile.
+        result = subprocess.run(
+            ['bash', '-c', 'source "$FREESURFER_HOME/SetUpFreeSurfer.sh" >&2 && env -0'],
+            env=environment, capture_output=True)
+        if result.returncode:
+            raise ValueError('Official FreeSurfer environment setup failed; inspect it in a dedicated terminal.')
+        os.environ.update(os.fsdecode(item).split('=', 1) for item in result.stdout.split(b'\0')
+                          if b'=' in item)
     tools = STATE / 'tools/docker'
     if (tools / 'docker').is_file():
         os.environ['PATH'] = str(tools) + os.pathsep + os.environ.get('PATH', '')
@@ -304,7 +328,7 @@ def docker_storage():
 
 def doctor(args):
     config = load(required=False)
-    runtime_environment(config)
+    runtime_environment(config, include_freesurfer=args.scope in ('swane-gui', 'swane-analysis', 'all'))
     checks = {'linux': platform.system() == 'Linux',
               'python_3_10_plus': sys.version_info >= (3, 10),
               'machine': platform.machine(), 'ram_gib': ram_gib(),
@@ -367,7 +391,7 @@ def doctor(args):
 def action(args):
     linux()
     config = load(required=False)
-    runtime_environment(config)
+    runtime_environment(config, include_freesurfer=args.command in ('open-swane', 'swane-dependencies'))
     if args.command == 'license-status':
         return license_status(config)
     elif args.command == 'import-licenses':
@@ -376,11 +400,14 @@ def action(args):
         command = [sys.executable, ROOT / 'tools/install_freesurfer.py']
         if args.plan:
             command += ['--plan']
+        if args.download_only:
+            command += ['--download-only']
         if args.accept_freesurfer_license:
             command += ['--accept-freesurfer-license']
         if args.host_storage:
             command += ['--host-storage', args.host_storage]
-        run(command)
+        # Preserve the controlling terminal for apt's sudo authentication.
+        subprocess.run(list(map(str, command)), check=True)
     elif args.command == 'install-fsl':
         command = [sys.executable, ROOT / 'tools/install_fsl.py']
         if args.conda:
@@ -486,6 +513,7 @@ def main(argv=None):
     p.add_argument('--data')
     p.add_argument('--swane-version')
     p.add_argument('--fsl-dir')
+    p.add_argument('--freesurfer-dir')
     p = sub.add_parser('doctor')
     p.add_argument('--for', dest='scope', choices=('computer', 'swane-install', 'swane-gui',
                    'swane-analysis', 'meld-install', 'meld-run', 'all'), default='all')
@@ -499,6 +527,7 @@ def main(argv=None):
         sub.add_parser(name)
     p = sub.add_parser('install-freesurfer')
     p.add_argument('--plan', action='store_true')
+    p.add_argument('--download-only', action='store_true')
     p.add_argument('--accept-freesurfer-license', action='store_true')
     p.add_argument('--host-storage')
     p = sub.add_parser('install-fsl')

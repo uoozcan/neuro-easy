@@ -43,6 +43,12 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(n.main(['configure', '--meld-release', str(self.release), '--data', self.config['data']]), 0)
         self.assertEqual(n.load()['data'], self.config['data'])
 
+    def test_meld_license_status_does_not_source_host_freesurfer(self):
+        self.config['freesurfer_dir'] = str(self.state / 'absent-host-freesurfer')
+        n.CONFIG.write_text(json.dumps(self.config))
+        with patch.object(n, 'linux'):
+            self.assertEqual(n.main(['license-status']), 0)
+
     def test_empty_license_rejected(self):
         (self.release / 'license.txt').write_text('')
         with self.assertRaises(ValueError):
@@ -252,8 +258,10 @@ class FreeSurferInstallerTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.patches = [
             patch.object(self.module.launcher, 'STATE', self.root),
-            patch.object(self.module, 'profile', return_value=('20.04', ('fixture.tar.gz', 'expected-md5'))),
+            patch.object(self.module, 'profile', return_value=('20.04', ('fixture.deb', 'expected-md5'))),
             patch.object(self.module.launcher, 'require_space'),
+            patch.object(self.module, 'TARGET', self.root / 'system/freesurfer/7.4.1'),
+            patch.object(self.module, 'installed_package', return_value=''),
         ]
         for p in self.patches:
             p.start()
@@ -268,16 +276,16 @@ class FreeSurferInstallerTests(unittest.TestCase):
             self.assertEqual(self.module.main([]), 2)
             runner.assert_not_called()
 
-    def test_checksum_mismatch_prevents_extraction(self):
+    def test_checksum_mismatch_prevents_package_installation(self):
         def fake_download(command):
             Path(command[command.index('--output') + 1]).write_bytes(b'corrupted fixture')
-        with patch.object(self.module.launcher, 'run', side_effect=fake_download), patch.object(self.module, 'extract') as extractor:
+        with patch.object(self.module.launcher, 'run', side_effect=fake_download), patch.object(self.module, 'validate_package') as validator:
             with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
                 self.module.main(['--accept-freesurfer-license', '--host-storage', str(self.root)])
-            extractor.assert_not_called()
+            validator.assert_not_called()
 
     def test_existing_installation_is_never_replaced(self):
-        target = self.root / 'apps/freesurfer-7.4.1'
+        target = self.module.TARGET
         target.mkdir(parents=True)
         (target / 'existing').write_text('preserve')
         with patch.object(self.module.launcher, 'run') as runner:
@@ -286,19 +294,32 @@ class FreeSurferInstallerTests(unittest.TestCase):
             runner.assert_not_called()
         self.assertEqual((target / 'existing').read_text(), 'preserve')
 
-    def test_archive_traversal_is_rejected(self):
-        import io
-        import tarfile
-        archive = self.root / 'unsafe.tar.gz'
-        with tarfile.open(archive, 'w:gz') as bundle:
-            item = tarfile.TarInfo('../escape')
-            item.size = 1
-            bundle.addfile(item, io.BytesIO(b'x'))
-        destination = self.root / 'stage'
-        destination.mkdir()
-        with self.assertRaises((ValueError, tarfile.TarError)):
-            self.module.extract(archive, destination)
-        self.assertFalse((self.root / 'escape').exists())
+    def test_wrong_package_identity_is_rejected(self):
+        with patch.object(self.module.launcher, 'run',
+                          return_value=subprocess.CompletedProcess([], 0, 'unrelated 7.4.1 amd64')):
+            with self.assertRaisesRegex(ValueError, 'Unexpected FreeSurfer package'):
+                self.module.validate_package(self.root / 'fixture.deb')
+
+    def test_failed_apt_preserves_failure_and_does_not_record_installed(self):
+        package = self.root / 'downloads/fixture.deb'
+        package.parent.mkdir()
+        package.write_bytes(b'fixture')
+        failure = subprocess.CalledProcessError(100, ['apt-get'])
+        with patch.object(self.module, 'checksums', return_value=('expected-md5', 'sha256-fixture')), \
+                patch.object(self.module, 'validate_package'), \
+                patch.object(self.module.launcher, 'run', side_effect=failure):
+            with self.assertRaises(subprocess.CalledProcessError) as caught:
+                self.module.main(['--accept-freesurfer-license', '--host-storage', str(self.root)])
+        self.assertEqual(caught.exception.returncode, 100)
+        record = json.loads((self.root / 'freesurfer-install.json').read_text())
+        self.assertEqual(record['status'], 'PACKAGE_VERIFIED')
+
+    def test_installed_package_is_not_replaced_even_if_directory_missing(self):
+        with patch.object(self.module, 'installed_package', return_value='install ok installed 6.0.0'), \
+                patch.object(self.module.launcher, 'run') as runner:
+            with self.assertRaisesRegex(ValueError, 'already exists'):
+                self.module.main(['--accept-freesurfer-license', '--host-storage', str(self.root)])
+            runner.assert_not_called()
 
 
 if __name__ == '__main__':

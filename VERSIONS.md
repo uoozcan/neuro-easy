@@ -19,8 +19,9 @@ These are observed WSL development versions, not a native Ubuntu compatibility c
 | MELD Graph | v2.2.7, source e523c9de4677cfc46efe97069fe59442be160788 | Installed container/config/imports; scientific verification blocked |
 | MELD image | meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef | amd64 Linux, image size 18,243,989,272 bytes |
 | Container runtime | Python 3.9.25, torch 1.10.0+cu102, working directory /app | Actual import smoke, no GPU used |
-| MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Image configuration inspected; no raw reconstruction |
-| SWANe FreeSurfer/MATLAB/Slicer | Not installed | Applicable modules/export remain pending |
+| MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Actual licensed MRI format roundtrip passed; autorecon1 running; full reconstruction pending |
+| SWANe standalone FreeSurfer | Official Ubuntu 20.04 DEB 7.4.1 | MD5 verified; apt installation running; operational checks pending |
+| SWANe MATLAB Runtime / Slicer | Not installed | Applicable modules/export remain pending |
 | Native Ubuntu 22.04/24.04 | Candidate laptop targets | No native-laptop acceptance run |
 
 SWANe wheel SHA-256:
@@ -56,3 +57,7 @@ Official sources: [MELD release](https://github.com/MELDProject/meld_graph/relea
 [Docker static binary installation](https://docs.docker.com/engine/install/binaries/),
 [Compose releases](https://github.com/docker/compose/releases/tag/v5.7.0),
 [public T1 dataset](https://github.com/neurolabusc/dcm_qa_mprage).
+
+Official FreeSurfer Ubuntu 20.04 7.4.1 DEB: 6,687,701,644 bytes; MD5 3f488ddc5c1a19fe23bb9cbe2c9f457f; observed SHA-256 2046cdafb6939ac076e0443794d793d4ffbacf83b01e3398ce9046ffa5f4e4f7.
+
+Official MELD data asset SHA-256: f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466 (701,224,128 bytes); matched GitHub asset metadata before extraction.

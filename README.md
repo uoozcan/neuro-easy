@@ -58,7 +58,7 @@ bash start.sh open-swane
 
 The tested linux-64 package set is recorded in requirements-fsl-linux-64.lock; --locked reuses those exact public package URLs. The FSL installer uses official FSL/conda-forge channels in a separate local/fsl-env. It pins the requested components to the official 6.0.7.8 release manifest and installs FSL's wrapper generator. This is a **partial FSL installation for T1 reference preprocessing**, not every SWANe module. The launcher exposes FSL's command wrappers without putting FSL's Python ahead of SWANe.
 
-For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export; they have not been installed or validated here. MELD's bundled FreeSurfer is separate and is not reused.
+For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export. See TEST_REPORT.md for the current standalone installation state; MATLAB Runtime and Slicer remain uninstalled. MELD's bundled FreeSurfer is separate and is not reused.
 
 ### Reproduce the public T1 reference test
 
@@ -77,7 +77,7 @@ Inspect `local/swane-t1-validation/outputs/`, `validation.json` and `mask-qc.png
 
 ## MELD and FreeSurfer continuation
 
-Follow [INSTALLATION_PLAN.md](INSTALLATION_PLAN.md) for personal registration, private licence import, activation of the already installed MELD image and the separately prepared standalone FreeSurfer 7.4.1 profile. The standalone installer is prepared and guarded; it has not been executed yet.
+Follow [INSTALLATION_PLAN.md](INSTALLATION_PLAN.md) for personal registration, private licence import, activation of the already installed MELD image and the standalone FreeSurfer 7.4.1 Ubuntu package profile. The installer verifies the official DEB checksum and identity, uses apt without package removals, requires sudo, and preserves existing FreeSurfer installations. See TEST_REPORT.md for actual installation/validation evidence.
 
 ```bash
 bash start.sh license-status
