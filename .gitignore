@@ -1,0 +1,12 @@
+local/
+__pycache__/
+*.pyc
+data/
+outputs/
+logs/
+license.txt
+meld_license.txt
+*.nii
+*.nii.gz
+*.dcm
+*.zip
