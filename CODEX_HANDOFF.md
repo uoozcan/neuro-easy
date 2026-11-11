@@ -17,7 +17,7 @@ The user explicitly accepted FSL and personally completed both FreeSurfer and ME
 - Isolated local/swane-env: Python 3.11.14, SWANe 0.2.1.1, dcm2niix, Qt. Partial FSL 6.0.7.8 is separate. Apt Graphviz, xclip, tcsh, bc/dc and Qt libraries installed.
 - Real SWANe public-T1 reference subworkflow passed with five checked outputs and limited 15-slice QC. Retry reused completed nodes; 1447.89 seconds is not a fresh whole-pipeline benchmark. A separate clean source clone/env reproduced exact Python/FSL locks and package/dependency checks on this same WSL OS.
 - Public DICOM GUI import: 192 files match hashes; workflow graph generated and inspected. No GUI-driven scientific execution or Slicer export.
-- Official FreeSurfer 7.4.1 Ubuntu20 DEB installed through apt, exit 0, at /usr/local/freesurfer/7.4.1. Official MD5 and observed SHA-256 are in VERSIONS.md. Selected ELF libraries, version and real licensed MRI format roundtrip pass. No full native 7.4 reconstruction. Setup reviewed; NO_FSFAST=1 avoids modifying MATLAB startup, FSLDIR is seeded, no .bashrc edits.
+- Official FreeSurfer 7.4.1 Ubuntu20 DEB installed through apt, exit 0, at /usr/local/freesurfer/7.4.1. Official MD5 and observed SHA-256 are in VERSIONS.md. Selected ELF libraries, version and real licensed MRI format roundtrip pass. Actual Freeview WSLg display and linked-plane navigation on the public test T1 also passed (local/freesurfer-validation/native-741/freeview-gui.json). No full native 7.4 reconstruction. Setup reviewed; NO_FSFAST=1 avoids modifying MATLAB startup, FSLDIR is seeded, no .bashrc edits.
 - A fresh SWANe WSLg GUI was inspected on 2026-11-11 and detects FreeSurfer 7.4.1/FSL/dcm2niix/Graphviz. It warns >=8.1 recommended for Synth and optional MATLAB Runtime R2019b absent. Slicer remains uninstalled and its automatic search is unbounded.
 - Local Docker static 29.9.3 / Compose 5.7.0, dedicated local/docker.sock and local/docker-data. Project daemon is session-managed; TEST_REPORT.md has its exact custom-subnet restart command. WSL restarted before the next-day continuation, and only this existing daemon was restarted.
 - MELD v2.2.7 CPU pinned image: meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef. Bundles FreeSurfer 7.2.0; host 7.4 must never replace it.
@@ -48,7 +48,7 @@ Observe these files:
 - local/meld-raw-validation/.neuro-easy/sub-publicqa.json — input hashes/image and structural output status
 - local/meld-raw-validation/output/predictions_reports/sub-publicqa — eventual prediction/report
 
-Tool session 98765 runs the pipeline; daemon session 27305 and GUI session 1969. These are continuation hints, not current-state proof. Container name initially meld-release-meld_graph-run-fa2d0d41814d. Use actual ps/status/logs before acting.
+Tool session 98765 runs the pipeline; daemon session 27305 and GUI session 1969; Freeview session 84631. These are continuation hints, not current-state proof. Container name initially meld-release-meld_graph-run-fa2d0d41814d. Use actual ps/status/logs before acting.
 
 Do not claim full raw-MRI pass until actual final exit, all stages, fresh outputs and visual reconstruction/registration/report QC complete. Structural checks are not clinical accuracy. If upstream exits 0 on a failure, postcheck must reject missing/stale outputs. A negative actual test rejected the empty official T1 with exit 2 and never started analysis.
 
@@ -64,7 +64,7 @@ Keep images, models, licences, logs, downloaded sources, environments and local 
 
 ## GitHub and remaining scopes
 
-Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. Keep draft while scientific/native-laptop acceptance is incomplete; do not merge without instruction. Latest publication and CI must be checked on actual head. The original GitHub Actions workflow remains because CLI OAuth lacks workflow scope; proposed expansion is only ignored local/launcher-expanded.yml.
+Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. Keep draft while scientific/native-laptop acceptance is incomplete; do not merge without instruction. Source commit 5bb246a9ba8c98148c2e0d705bc27d2d80993538 passed GitHub Actions run 43022131830 (37 offline cases). Later documentation-only updates still need their actual head checks observed. The original GitHub Actions workflow remains because CLI OAuth lacks workflow scope; proposed expansion is only ignored local/launcher-expanded.yml.
 
 For CLI push, the working authenticated helper is /home/umut/bin/gh auth git-credential (local gh at /home/umut/bin/gh). Do not print tokens.
 

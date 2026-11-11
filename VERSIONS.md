@@ -20,7 +20,7 @@ These are observed WSL development versions, not a native Ubuntu compatibility c
 | MELD image | meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef | amd64 Linux, image size 18,243,989,272 bytes |
 | Container runtime | Python 3.9.25, torch 1.10.0+cu102, working directory /app | Actual import smoke, no GPU used |
 | MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Licensed format roundtrip and public-T1 autorecon1 passed; fresh full reconstruction running |
-| SWANe standalone FreeSurfer | Official Ubuntu 20.04 DEB 7.4.1 | Official DEB installed via apt; ELF/version/licensed format checks and SWANe GUI detection passed |
+| SWANe standalone FreeSurfer | Official Ubuntu 20.04 DEB 7.4.1 | Official DEB installed via apt; ELF/version/licensed format checks, Freeview display/navigation and SWANe GUI detection passed |
 | SWANe MATLAB Runtime / Slicer | Not installed | Applicable modules/export remain pending |
 | Native Ubuntu 22.04/24.04 | Candidate laptop targets | No native-laptop acceptance run |
 
