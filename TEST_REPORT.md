@@ -1,24 +1,69 @@
-# Verification report — 2026-11-10
+# Verification report — 2026-11-11
 
-## Licence activation and installation follow-up — in progress
+## Current verification — 2026-11-11
 
-This section supersedes the earlier missing-licence blocker. The user personally completed both upstream registrations. Genuine emailed FreeSurfer and MELD licence files were privately imported with mode 600; their contents and registration details are not committed. Both syntax checks pass. An actual licensed FreeSurfer 7.2.0 MRI format roundtrip in the pinned MELD image also passed: shape (192, 256, 170), finite data, identical voxel values, maximum affine rounding difference 7.62939453125e-06. This verifies conversion/licence operation, not reconstruction or MELD prediction.
+This section supersedes earlier licence blockers and in-progress installation statements below. Complete raw-MRI-to-report acceptance is still pending.
 
-Official MELD data archive: 701,224,128 bytes, SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466, matching GitHub's published asset digest. The slow initial container download was deliberately stopped after preserving partial bytes. WSL curl resumed the same official URL, the digest was verified, and 112 entries / 1,567,506,466 uncompressed bytes were extracted without overwriting prior data. Upstream prepare_classifier.py --skip-download-data then exited 0. Private provenance and an integrity inventory remain under local/meld-data/provenance.
+| Scope | Observed result |
+| --- | --- |
+| Personal licences | Both genuine emailed files imported privately, mode 600; syntax checks and actual licensed commands pass |
+| MELD preparation | Official data SHA-256 matched; upstream preparation exited 0 |
+| Full upstream MELD pytest | 17 collected, 17 passed, no skips, exit 0 |
+| Separate report generation | Four-page PDF generated, exit 0; all pages inspected, with header clipping on pages 2/3 |
+| Bundled FreeSurfer 7.2 autorecon1 | Public original T1 completed, exit 0; limited visual/numeric QC |
+| Standalone FreeSurfer 7.4.1 | Official DEB installed through apt, exit 0; version, selected ELF libraries and licensed MRI conversion pass |
+| Fresh SWANe WSLg GUI | Detects FreeSurfer 7.4.1, FSL, dcm2niix and Graphviz; optional dependency warnings remain |
+| Offline launcher tests | 37 passed; external application/network calls mocked |
+| Fresh raw T1 through MELD | RUNNING; launched 2026-11-11 12:31 UTC, reconstruction started; no final pass |
 
-Actual doctor --for meld-run now exits 0 with no missing prerequisites. Full upstream pytest (including slow tests) collected 17 items and is currently RUNNING at prediction/saliency. It has produced new prediction datasets; the original archive only supplied expected/reference predictions. No final pytest or raw-MRI-to-report pass is claimed. Upstream's prediction test uses --no_report and preprocessed surfaces, so even a final pytest pass will not establish report generation or raw reconstruction.
+### MELD preparation and full upstream tests
 
-A separate real bundled FreeSurfer 7.2.0 autorecon1 on the licensed public original T1 is RUNNING, past two bias-correction passes and into normalization/registration. It is a first-stage check, not complete cortical reconstruction and not the standalone SWANe installation. Log: local/logs/freesurfer-bundled-autorecon1.log.
+Official data asset: 701,224,128 bytes, SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466, matched GitHub metadata. A slow initial container download was deliberately stopped, its bytes preserved, and WSL curl resumed the same URL. The verified archive contained 112 entries / 1,567,506,466 uncompressed bytes; extraction did not overwrite prior data. prepare_classifier.py --skip-download-data exited 0.
 
-Rechecked upstream's package guidance and replaced the unexecuted tar installer with official Ubuntu DEBs via apt. The Ubuntu 20.04 FreeSurfer 7.4.1 package is 6,687,701,644 bytes; official MD5 3f488ddc5c1a19fe23bb9cbe2c9f457f matched, and observed SHA-256 is 2046cdafb6939ac076e0443794d793d4ffbacf83b01e3398ce9046ffa5f4e4f7. Official apt installation has started and is fetching its Ubuntu dependencies. Final installation, shared-library, licensed standalone MRI and new SWANe detection checks are still pending.
+Command: /usr/bin/time -v bash start.sh test-meld, in Ubuntu-20.04 using the pinned CPU image in VERSIONS.md. Full upstream pytest collected and passed all 17 tests, including slow tests, with no skips. Pytest reported 6296.74 seconds; outer elapsed was 1:53:00. Actual final exit was 0 at 2026-11-10 20:59:27 UTC. Private log: local/logs/meld-upstream-pytest-full.log; durable status: local/meld-test.json.
 
-Thirty-three offline launcher regression cases pass. The new cases cover package identity/checksum rejection, preserving existing software, failed apt status, and MELD independence from optional host FreeSurfer setup. Bash syntax, Python compilation and git diff checks pass. External application/network calls in these regression tests are mocked.
+This suite uses preprocessed surfaces/features. Its FreeSurfer test uses -dontrun, and prediction passes --no_report. New predictions were generated; the archive only contained expected predictions. Clustered HDF5 differences were zero in both hemispheres, and generated native NIfTI data/affine exactly match the expected result. The suite is not a raw-MRI reconstruction or report-generation pass.
 
-Resource observations: the MELD test used all logical CPUs initially; its quota was reduced to eight during the run to preserve desktop responsiveness. Samples observed about 13.5 GiB at one point, but polling timed out and left a gap before continuous sampling resumed, so the true peak is unmeasured. Large duplicate download-piece cache coincided with approximately 1.2 GiB Windows free memory. Clean cache was released once globally and later specifically for completed download pieces; Microsoft's documented Linux memory compaction was also requested without restarting WSL or stopping calculations. Windows free memory improved in a later observation. Timing is observational under concurrent installation/tests and memory troubleshooting, not a controlled performance benchmark. [Microsoft memory-reclaim guidance](https://devblogs.microsoft.com/commandline/memory-reclaim-in-the-windows-subsystem-for-linux-2/).
+The archive README explicitly states its input NIfTIs are empty placeholders. Inspection confirmed the example T1 has only zeros. An initial QA helper incorrectly compared the prediction grid to that placeholder and failed before starting the planned report. The failure is preserved privately. The corrected comparison uses FreeSurfer mri/orig/001.mgz: matching (256,256,240) grid and affine, finite prediction, 13,047 nonzero voxels. This corrects reference selection; it is not a lesion-accuracy result.
 
-GUI follow-up is incomplete: selected WSLg window capture initially timed out; refreshed selection later returned an unrelated foreground surface and activating the SWANe target timed out. No input was sent to the unrelated surface and no new GUI pass is claimed. Retry with the installed environment and a reliably visible target; do not infer visual success from terminal checks.
+### Separate actual PDF report test
 
-This report supersedes the original restricted Windows-session inventory. Installation, mocked launcher regression, GUI, reference preprocessing and full MRI-to-report acceptance are separate scopes.
+Ran unmodified upstream generate_prediction_report in the pinned container against the newly generated predictions and the real MRI supplied as FreeSurfer orig/001.mgz. A separate /data root held a converted copy of that matching anatomy; original empty input fixtures were unchanged. Models, parameters, preprocessed features and FreeSurfer outputs were mounted read-only. No new inference or raw reconstruction was performed.
+
+Actual exit 0. Output: local/meld-report-validation/output/predictions_reports/sub-test001/reports/MELD_report_sub-test001.pdf, 2,587,769 bytes, four A4 pages. All four pages were rendered with Poppler and visually inspected. Anatomy, cluster overlays, surface views, saliency plots and version page are present. Headers on pages 2 and 3 are clipped in the unmodified upstream output; this is a report-layout limitation, not a polished-report acceptance pass. The original PDF and result.json are retained privately. No clinical interpretation or prediction-accuracy claim is made.
+
+### FreeSurfer operational and MRI checks
+
+Bundled 7.2.0 licensed MRI conversion roundtrip passed: (192,256,170), finite, identical voxel values, affine rounding at most 7.62939453125e-06. A first diagnostic failed because bash -lc reset PATH; the corrected official setup passed.
+
+Separate recon-all -autorecon1 -openmp 4 on the original public T1 completed with exit 0 in 5401.18 seconds, ending 2026-11-10 20:20:39 UTC. orig, nu, T1 and brainmask are finite (256,256,256), 1 mm, matching geometry. Retained mask volume: 1758.635 mL; masked brain intensities equal T1 inside the mask. Fifteen sampled orthogonal slices showed no gross brain truncation and some extracerebral/dural remnants. No ground-truth segmentation accuracy was measured. This is not complete cortical reconstruction. Evidence: local/freesurfer-validation/bundled-autorecon1-result.json and local/logs/freesurfer-bundled-autorecon1.log.
+
+Official standalone Ubuntu 20.04 FreeSurfer 7.4.1 DEB was checksum-verified and installed through apt with 104 dependencies, exit 0. No tar installation was executed and no existing FreeSurfer was replaced. Package size/MD5/SHA-256 are in VERSIONS.md. Installed path: /usr/local/freesurfer/7.4.1; version freesurfer-linux-ubuntu20_x86_64-7.4.1-20230614-7eb8460. Selected ELF dependency checks for mri_convert, mri_watershed, mri_em_register and freeview found no missing libraries. Actual native original-T1 NIfTI -> MGZ -> NIfTI conversion passed: (192,256,256), finite, identical voxel values, maximum affine rounding 4.410743713378906e-06. Evidence: local/freesurfer-validation/native-741/result.json and local/logs/freesurfer-official-apt-install.log. This is not a full native 7.4 reconstruction.
+
+Official FreeSurfer setup was inspected before sourcing. The launcher uses NO_FSFAST=1 to avoid MATLAB startup-file creation, sets FSLDIR consistently, sources setup in a child shell and retains isolated SWANe/FSL paths. It does not edit .bashrc or source host FreeSurfer for MELD.
+
+### GUI, resources and temporary settings
+
+After capture/focus failures, the user brought SWANe forward. The earlier public-T1 workflow graph was visually confirmed. Following the later WSL restart, a fresh FreeSurfer-aware SWANe window was inspected on 2026-11-11. It detects dcm2niix, FSL, Graphviz and FreeSurfer 7.4.1. It correctly warns that >=8.1 is recommended for Synth and optional MATLAB Runtime R2019b is absent. Slicer discovery remains unbounded; Slicer is not installed. No GUI-driven analysis, Freeview interaction or Slicer export is claimed.
+
+MELD pytest initially used all CPUs, then an eight-CPU quota. Observed memory reached at least 13.53 GiB in sampled statistics, with gaps; the true peak is unmeasured. The GNU time wrapper RSS is Docker-client memory, not application peak. Concurrent installation, cache reclamation and temporary installer suspension make runtimes observational rather than controlled benchmarks. A diagnostic profiler was canceled and removed; no conclusion was drawn from a native backtrace.
+
+Temporary Windows Balanced selection was reverted to the original Power saver scheme at 2026-11-10 21:17 UTC; both the actual scheme and restore_required=false were subsequently verified. The paused installer was resumed and finished; no paused installer/profiler remains. WSL restarted before the next day's continuation; the existing project daemon was restarted without reinstalling or resetting WSL.
+
+### Fresh raw-MRI validation in progress
+
+Command:
+
+```bash
+bash start.sh run-meld --subject sub-publicqa --threads 4 \
+  --data "$PWD/local/meld-raw-validation"
+```
+
+This uses the original public scanner-QA T1 (source/commit/checksum below), a fresh subject and isolated data root, bundled FreeSurfer 7.2.0, default noHarmo and no FLAIR. No earlier autorecon1, host 7.4 surfaces or SWANe outputs were reused. Input provenance passed; actual recon-all has started. Log: local/logs/meld-public-raw-pipeline.log; status: local/meld-run-sub-publicqa.json. Full reconstruction, feature extraction, inference, report, structural checks and visual QC must finish before acceptance. There is no supplied lesion ground truth.
+
+The launcher now checks actual finite, varying 3D MRI input in the pinned container, rejects the empty example, records hashes/image provenance, refuses untracked/changed reconstruction reuse, and checks fresh prediction/report files after upstream returns. This prevents upstream's zero-exit error paths from becoming false passes. Successful structural checks still require visual reconstruction/registration/report review. Actual negative test with the empty official T1 returned 2 and did not launch analysis. Thirty-seven offline tests pass, including preflight/postcheck failure propagation and per-run data isolation; Bash syntax, Python compilation and git diff checks pass. A real pinned-container postcheck rejected missing artifacts with exit 2; freshly copied actual reference prediction/MRI/PDF passed structural checks (not a fresh inference run). Each Compose invocation now retains a unique private configuration snapshot so another command cannot replace a long-running case's data mount.
+
+Remaining separate scopes: raw-MRI run completion/QC, SWANe full study/reconstruction/export, optional MATLAB Runtime/Slicer/Synth dependencies, native Ubuntu laptop reproduction and SWANe-to-MELD interoperability. The historical sections below retain prior attempts and blockers; their older licence/installation statements are superseded here.
 
 ## Follow-up: RAM allocation and extended GUI inspection
 

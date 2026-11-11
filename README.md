@@ -10,6 +10,8 @@ Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOF
 - The installed application's own checks detect dcm2niix, partial FSL 6.0.7.8 and Graphviz.
 - Real Docker hello-world and CPU Compose configuration checks pass.
 - The real public T1 DICOM reference subworkflow completed and its outputs were inspected; see TEST_REPORT.md.
+- MELD preparation and all 17 upstream tests passed; a separate reference PDF was generated with layout limitations. A fresh raw-MRI run is in progress.
+- Standalone FreeSurfer 7.4.1 is installed and detected by the fresh SWANe GUI; MELD retains bundled 7.2.
 - Offline CI tests launcher behavior only. It does not validate either scientific application.
 
 Ubuntu 22.04/24.04 are candidate native targets. Current Docker apt documentation supports them; it no longer lists Ubuntu 20.04. Do not upgrade/reset an existing WSL distribution as part of this setup. The local Ubuntu 20.04 development session uses isolated official Docker static binaries; that test setup needs manual updates and is not the recommended laptop installation route.
@@ -99,7 +101,7 @@ bash start.sh doctor --for meld-install
 bash start.sh install-meld
 ```
 
-Compose normalizes the original release configuration, resolves its relative secrets paths, removes GPU reservations and replaces /data in a single generated CPU configuration. The upstream file is not edited. Installation checks >=30 GiB free at the actual Docker storage location and >=10 GiB at the data location, then records the immutable registry digest.
+Compose normalizes the original release configuration, resolves its relative secrets paths, removes GPU reservations and replaces /data in one private CPU configuration snapshot per invocation. A later command cannot change an active run's data mount. The upstream file is not edited. Installation checks >=30 GiB free at the actual Docker storage location and >=10 GiB at the data location, then records the immutable registry digest.
 
 The image can be pulled before licences are available. Running it requires your own nonempty `license.txt` and `meld_license.txt` in the release directory. [Register through MELD's official instructions](https://meld-graph.readthedocs.io/en/latest/install_docker.html); never invent, share or commit licences.
 
@@ -107,10 +109,12 @@ The image can be pulled before licences are available. Running it requires your 
 bash start.sh prepare-meld
 bash start.sh doctor --for meld-run
 bash start.sh test-meld
-bash start.sh run-meld --subject sub-001
+bash start.sh run-meld --subject sub-001 --threads 4
 ```
 
-MELD recommends at least 24 GB RAM for CPU prediction. This development host now exposes 24.46 GiB to Ubuntu and the actual container after a user-approved WSL limit increase. The RAM readiness check passes; personal licences are still required. The launcher refuses prediction/pytest below 24 GiB. Close memory-heavy Windows applications before eventual prediction on this 32 GB host. Preparation also requires the personal licences. Inspect pytest collection, skips and output logs; upstream verification may use preprocessed inputs and does not establish a raw-MRI pass.
+MELD recommends at least 24 GB RAM for CPU prediction. This development host now exposes 24.46 GiB to Ubuntu and the actual container after a user-approved WSL limit increase. The RAM readiness check passes and this host's genuine personal licences are installed; another machine still requires its own licences. The launcher refuses prediction/pytest below 24 GiB. Close memory-heavy Windows applications before eventual prediction on this 32 GB host. Preparation also requires the personal licences. Inspect pytest collection, skips and output logs; upstream verification may use preprocessed inputs and does not establish a raw-MRI pass.
+
+The bundled example T1 is an empty placeholder for preprocessed tests. It cannot validate a raw-MRI workflow. run-meld rejects empty/constant or invalid MRI, records input/image provenance and rejects untracked or changed reconstruction reuse. After upstream returns it requires fresh finite prediction data in FreeSurfer native geometry and a complete PDF. All-zero predictions are valid; structural checks do not prove clinical accuracy or replace visual QC. Per-subject status is recorded under local/meld-run-SUBJECT.json. For a separate data root, add --data /path/to/meld-data; it must contain the prepared models/parameters and does not change saved configuration.
 
 Do not feed SWANe reconstructions to MELD without independent version/format validation. No interoperability is implemented.
 

@@ -10,6 +10,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import uuid
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'local'
@@ -125,6 +126,11 @@ def runtime_environment(config, include_freesurfer=False):
         if not (home / 'SetUpFreeSurfer.sh').is_file():
             raise ValueError('Configured FreeSurfer setup is absent; check --freesurfer-dir.')
         environment = dict(os.environ, FREESURFER_HOME=str(home))
+        # Structural setup must not create/modify a MATLAB startup file.
+        environment.setdefault('NO_FSFAST', '1')
+        fsl_home = Path(config.get('fsl_dir', STATE / 'fsl-env'))
+        if (fsl_home / 'etc/fslversion').is_file():
+            environment['FSLDIR'] = str(fsl_home)
         licence = Path(config.get('meld_release', STATE / 'meld-release')) / 'license.txt'
         if licence.is_file():
             environment.setdefault('FS_LICENSE', str(licence))
@@ -172,7 +178,8 @@ def compose(config):
     service['volumes'] = volumes
     if config.get('meld_image_digest'):
         service['image'] = config['meld_image_digest']
-    path = STATE / 'compose.cpu.json'
+    # Keep this invocation's mount/image snapshot stable during long analyses.
+    path = STATE / 'runs' / uuid.uuid4().hex / 'compose.cpu.json'
     save(path, model)
     # A single normalized file avoids sequence merging retaining a GPU request.
     return ['docker', 'compose', '--project-directory', str(release), '-f', str(path)]
@@ -391,6 +398,8 @@ def doctor(args):
 def action(args):
     linux()
     config = load(required=False)
+    if args.command == 'run-meld' and args.data:
+        config = dict(config, data=str(Path(args.data).expanduser().resolve()))
     runtime_environment(config, include_freesurfer=args.command in ('open-swane', 'swane-dependencies'))
     if args.command == 'license-status':
         return license_status(config)
@@ -500,8 +509,19 @@ def action(args):
         elif args.command == 'run-meld':
             if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', args.subject):
                 raise ValueError('Subject ID must use letters, numbers, underscores or hyphens.')
-            run(base + ['run', '--rm', 'meld_graph', 'python',
-                        'scripts/new_patient_pipeline/new_pt_pipeline.py', '-id', args.subject])
+            if not 1 <= args.threads <= 64:
+                raise ValueError('--threads must be between 1 and 64.')
+            helper = ROOT / 'tools/check_meld_case.py'
+            checked = base + ['run', '--rm', '-v', str(helper) + ':/opt/neuro_easy/check_meld_case.py:ro',
+                              'meld_graph', 'python', '/opt/neuro_easy/check_meld_case.py']
+            run(checked + ['pre', args.subject, config['meld_image_digest']])
+            run(base + ['run', '--rm', '-e', 'OMP_NUM_THREADS=' + str(args.threads),
+                        '-e', 'MKL_NUM_THREADS=' + str(args.threads),
+                        '-e', 'OPENBLAS_NUM_THREADS=' + str(args.threads),
+                        'meld_graph', 'python', 'scripts/new_patient_pipeline/new_pt_pipeline.py',
+                        '--threads', str(args.threads), '-id', args.subject])
+            run(checked + ['post', args.subject, config['meld_image_digest']])
+            print('Structural outputs checked. Inspect reconstruction and report visually before acceptance.')
     return 0
 
 
@@ -539,12 +559,19 @@ def main(argv=None):
     p.add_argument('--output', required=True)
     p = sub.add_parser('run-meld')
     p.add_argument('--subject', required=True)
+    p.add_argument('--threads', type=int, default=4)
+    p.add_argument('--data', help='Per-run MELD data directory; does not change saved configuration.')
     args = parser.parse_args(argv)
     record = {'command': args.command, 'status': 'RUNNING', 'utc': now(),
               'scope': 'launcher action; see command logs for acceptance evidence'}
     save(STATE / 'last-action.json', record)
     if args.command == 'test-meld':
         save(STATE / 'meld-test.json', record)
+    if args.command == 'run-meld' and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', args.subject):
+        record.update(subject=args.subject, data=args.data,
+                      data_source='override' if args.data else 'saved configuration', threads=args.threads,
+                      scope='raw-MRI pipeline and structural output checks; visual QC required separately')
+        save(STATE / ('meld-run-' + args.subject + '.json'), record)
     try:
         if args.command == 'configure':
             configure(args)
@@ -570,6 +597,8 @@ def main(argv=None):
         record.update({'scope': 'upstream MELD pytest only; inspect skips and raw-MRI coverage',
                        'image': load(required=False).get('meld_image_digest', 'UNPINNED')})
         save(STATE / 'meld-test.json', record)
+    if args.command == 'run-meld' and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', args.subject):
+        save(STATE / ('meld-run-' + args.subject + '.json'), record)
     return code
 
 

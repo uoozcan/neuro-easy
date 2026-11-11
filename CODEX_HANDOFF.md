@@ -1,76 +1,71 @@
 # Codex continuation brief
 
-Read AGENTS.md, README.md, IMPLEMENTATION_PROMPT.md, TEST_REPORT.md and the source before continuing.
+Read AGENTS.md, README.md, IMPLEMENTATION_PROMPT.md, TEST_REPORT.md and source before continuing. TEST_REPORT.md's current section supersedes historical blockers.
 
-## Working checkout and authorization
+## Checkout and authorization
 
 Repository: https://github.com/uoozcan/neuro-easy
-Active development checkout: /home/umut/projects/neuro-easy in Ubuntu-20.04 WSL2.
-The Windows workspace was an empty Git repository and was left separate.
-The user authorizes installation, troubleshooting, testing and GitHub updates.
-On 2026-11-10 the actual user explicitly accepted the FSL licence and stated they do not have MELD or FreeSurfer licences. Do not ask for FSL acceptance again for this authorized installation. Do not invent or obtain another person's personal licences.
+Active checkout: /home/umut/projects/neuro-easy, Ubuntu-20.04 WSL2, branch codex/wsl-install-validation.
+The separate Windows workspace was an empty Git repository and remains separate.
+The user authorizes installation, troubleshooting, testing and GitHub updates, including GUI inspection. Continue existing installations; do not reset WSL or replace unrelated environments.
 
-## Observed state
+The user explicitly accepted FSL and personally completed both FreeSurfer and MELD registration. Genuine emailed licences were imported into ignored local/meld-release with mode 600. Both syntax checks and actual licensed commands pass. Do not ask again or commit licences/contact details/private registration evidence.
 
-WSL access and HTTPS work when the terminal command runs outside the restricted sandbox. Do not reset WSL.
-Ubuntu 20.04.6, x86_64, i7-10750H (12 logical CPUs), initially about 15.5 GiB RAM and 4 GiB swap; after the user-approved memory follow-up, Ubuntu and the MELD container see 24.4558 GiB RAM and 7 GiB swap. The 31.82 GiB Windows host now has memory=25GB in its backed-up .wslconfig.
-System Python is 3.8.10. Existing /home/umut/miniconda3/bin/python is 3.11.14 and was used only to create an isolated project venv. Existing conda environments were preserved.
-SWANe 0.2.1.1, dcm2niix and partial FSL 6.0.7.8 are installed in local/. Real WSLg GUI inspection shows dcm2niix/FSL/Graphviz detected.
-Graphviz, xclip, tcsh, Qt/XCB libraries, bc and dc were installed using apt.
-Standalone FreeSurfer for SWANe, MATLAB Runtime and 3D Slicer have not been installed. MELD already bundles FreeSurfer 7.2.0 inside its installed image.
+## Installed and validated
 
-The selected scientific test is SWANe's real T1 reference subworkflow on one licensed public MPRAGE DICOM series. The real reference subworkflow completed with five checked outputs and limited visual QC; TEST_REPORT.md records its timing and acceptance scope. local/swane-t1-validation/validation-full-run.json preserves the full retry, and validation.json records the checksum-aware cached check. The first actual run failed because FSL BET needed dc; that was installed and an actionable readiness check added. The successful retry reused completed Nipype nodes; its observed 1447.89-second runtime is therefore not a fresh uncached whole-pipeline benchmark. A fresh source clone with new SWANe and partial FSL environments also passed dependency/package checks with exact Python/FSL lock matches and 21 launcher tests.
+- Ubuntu 20.04.6 x86_64, i7-10750H / 12 logical CPUs. Windows physical RAM 31.82 GiB; backed-up .wslconfig ceiling 25 GiB. Ubuntu/container see 24.4558 GiB plus 7 GiB swap. System Python 3.8 is unchanged.
+- Isolated local/swane-env: Python 3.11.14, SWANe 0.2.1.1, dcm2niix, Qt. Partial FSL 6.0.7.8 is separate. Apt Graphviz, xclip, tcsh, bc/dc and Qt libraries installed.
+- Real SWANe public-T1 reference subworkflow passed with five checked outputs and limited 15-slice QC. Retry reused completed nodes; 1447.89 seconds is not a fresh whole-pipeline benchmark. A separate clean source clone/env reproduced exact Python/FSL locks and package/dependency checks on this same WSL OS.
+- Public DICOM GUI import: 192 files match hashes; workflow graph generated and inspected. No GUI-driven scientific execution or Slicer export.
+- Official FreeSurfer 7.4.1 Ubuntu20 DEB installed through apt, exit 0, at /usr/local/freesurfer/7.4.1. Official MD5 and observed SHA-256 are in VERSIONS.md. Selected ELF libraries, version and real licensed MRI format roundtrip pass. No full native 7.4 reconstruction. Setup reviewed; NO_FSFAST=1 avoids modifying MATLAB startup, FSLDIR is seeded, no .bashrc edits.
+- A fresh SWANe WSLg GUI was inspected on 2026-11-11 and detects FreeSurfer 7.4.1/FSL/dcm2niix/Graphviz. It warns >=8.1 recommended for Synth and optional MATLAB Runtime R2019b absent. Slicer remains uninstalled and its automatic search is unbounded.
+- Local Docker static 29.9.3 / Compose 5.7.0, dedicated local/docker.sock and local/docker-data. Project daemon is session-managed; TEST_REPORT.md has its exact custom-subnet restart command. WSL restarted before the next-day continuation, and only this existing daemon was restarted.
+- MELD v2.2.7 CPU pinned image: meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef. Bundles FreeSurfer 7.2.0; host 7.4 must never replace it.
+- Official MELD data SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466 verified; preparation exited 0. Data/models remain ignored.
+- Full upstream pytest completed: 17 collected / 17 passed, no skips, exit 0, 6296.74 pytest seconds, outer 1:53:00. local/meld-test.json and local/logs/meld-upstream-pytest-full.log. Do not rerun it merely to rediscover results.
+- Pytest predictions exactly match references, but use preprocessed surfaces/features, -dontrun and --no_report. The bundled input T1 is explicitly an empty placeholder. It is not a raw-MRI test.
+- Initial private QA compared prediction grid to the empty placeholder and failed; corrected comparison to FS orig/001.mgz passed. Both records retained.
+- Separate actual report-only test generated a four-page PDF from existing predictions and matching supplied MRI, exit 0. All pages rendered and inspected. Headers on pages 2/3 clip in unmodified upstream output; record this limitation. local/meld-report-validation/result.json, no new inference/reconstruction.
+- Separate bundled FS7.2 autorecon1 passed on original public T1, exit 0 in 5401.18 seconds. Finite/matching images; limited QC showed no gross sampled truncation and some extracerebral remnants. Not full cortical reconstruction.
+- Thirty-seven offline regression tests pass, including fail-closed pre/post checks. Bash syntax, Python compilation, diff checks passed. CI remains separate from actual scientific acceptance.
 
-Docker static 29.9.3 and Compose 5.7.0 are local development tools because Ubuntu 20.04 is no longer listed in Docker's current apt support matrix. Real hello-world passed. A dedicated project daemon uses local/docker.sock and local/docker-data; it is session-managed. README/TEST_REPORT describe the restart command. Do not treat this as a native-laptop Docker deployment.
+## Active fresh raw-MRI run — inspect, do not duplicate
 
-Official MELD v2.2.7 archive and source are under ignored local/. The generated CPU Compose configuration was checked with real Compose. Both licence locations were confirmed as /run/secrets/license.txt and /run/secrets/meld_license.txt. The original release Compose is unchanged. The image is installed at digest sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef; a real container import smoke passed. Scientific preparation/pytest are blocked by the personal licence prerequisite.
-
-## Acceptance boundaries
-
-- Offline tests, package checks, visible GUI, T1 reference preprocessing, MELD pytest and complete raw-MRI pipelines are separate acceptance levels.
-- Missing personal MELD/FreeSurfer licences block MELD preparation and scientific execution.
-- The WSL RAM blocker is resolved: actual container-visible RAM is 24.4558 GiB and meld_recommended_ram=true. The launcher still correctly blocks execution until personal licences are provided. Capacity visibility has been checked; a full memory stress/prediction test has not run.
-- SWANe's T1 reference test does not cover registration, cortical reconstruction, multi-modal studies or Slicer reports.
-- No SWANe-to-MELD interoperability is implemented.
-- Clean native Ubuntu laptop reproduction still requires access to that computer.
-- Keep all images, models, licences, logs, downloaded sources and environments out of Git.
-
-## Commands
+Launched 2026-11-11 12:31 UTC:
 
 ```bash
 cd /home/umut/projects/neuro-easy
-bash start.sh doctor --for swane-analysis
-bash start.sh swane-smoke
-bash start.sh swane-dependencies
-bash start.sh open-swane
-local/swane-env/bin/python -m unittest discover -s tests -v
-bash -n start.sh
+bash start.sh run-meld --subject sub-publicqa --threads 4 \
+  --data "$PWD/local/meld-raw-validation"
 ```
 
-See TEST_REPORT.md for exact observed results, final GitHub publication and remaining work. Continue from the existing installation; do not reinstall unrelated environments.
+Actual preflight passed and recon-all started. Fresh original public T1; no host 7.4 surfaces, earlier autorecon1 or SWANe outputs reused. Separate root includes copied official models/parameters. Default noHarmo, no FLAIR. Source: neurolabusc/dcm_qa_mprage commit ffc4fd6edc37cac769d69740185bdb1306b5a3fb, BSD-2-Clause; MRI SHA c18ad5698aba7dad90a50f26840cabb880a05b8eedfeae6fb6319ef9f0450262. No supplied lesion ground truth.
 
-## Published continuation
+Observe these files:
+- local/meld-run-sub-publicqa.json — launcher RUNNING/final exit
+- local/logs/meld-public-raw-pipeline.log — outer output/time
+- local/meld-raw-validation/output/fs_outputs/sub-publicqa/scripts/recon-all.log — live reconstruction progress
+- local/meld-raw-validation/.neuro-easy/sub-publicqa.json — input hashes/image and structural output status
+- local/meld-raw-validation/output/predictions_reports/sub-publicqa — eventual prediction/report
 
-Draft PR: https://github.com/uoozcan/neuro-easy/pull/1 on codex/wsl-install-validation. Source implementation b5e17af801c0ca959c2b75eaf4a28963508315f4 passed GitHub Actions run 42844193187. The draft status reflects incomplete full scientific/native-laptop acceptance. The original CI workflow is preserved because the CLI credential lacks workflow scope; the proposed expanded workflow is only in ignored local/launcher-expanded.yml.
+Tool session 98765 runs the pipeline; daemon session 27305 and GUI session 1969. These are continuation hints, not current-state proof. Container name initially meld-release-meld_graph-run-fa2d0d41814d. Use actual ps/status/logs before acting.
 
-Follow-up GUI inspection imported the 192-image public T1 series into local/swane-work/public-t1-qa and generated the real workflow graph. All imported content hashes match. No GUI analysis was executed. Application Settings were inspected; subject preferences had a capture limitation. Slicer discovery remains an unbounded filesystem search; see TEST_REPORT.md.
+Do not claim full raw-MRI pass until actual final exit, all stages, fresh outputs and visual reconstruction/registration/report QC complete. Structural checks are not clinical accuracy. If upstream exits 0 on a failure, postcheck must reject missing/stale outputs. A negative actual test rejected the empty official T1 with exit 2 and never started analysis.
 
-## Activation follow-up in progress (supersedes earlier licence blockers)
+The new --data option affects only that run and preserves saved configuration. Each Compose invocation now uses a unique ignored local/runs configuration snapshot, avoiding a shared-file race during concurrent commands. The already-active raw run retains its older shared snapshot; do not overwrite local/compose.cpu.json while it runs. tools/check_meld_case.py executes inside pinned MELD: varying finite 3D MRI, safe filenames, input hashes/image, no untracked/changed reconstruction reuse; postcheck requires fresh native-space predictions and PDF. All-zero lesion predictions are valid. Do not delete incomplete output to force a rerun; inspect upstream resume behavior (it refuses incomplete subjects) and preserve evidence first.
 
-The user personally completed both registrations. Genuine emailed license.txt and meld_license.txt were imported into the configured ignored release directory with mode 600. Both syntax checks pass. No personal details or licence contents belong in Git.
+## Resources and cleanup
 
-A real licence-requiring MRI conversion roundtrip using bundled FreeSurfer 7.2.0 passed: voxel values are identical, shape is preserved and affine rounding differs by at most 7.62939453125e-06. Evidence: local/freesurfer-validation/meld-fs72-result.json. This is not reconstruction or MELD prediction acceptance.
+Observed pytest memory reached at least 13.53 GiB, with sampling gaps; true peak unmeasured. Wrapper RSS is Docker client, not application RSS. Timings include concurrent installations/cache troubleshooting and are observational.
 
-The official MELD data asset is 701,224,128 bytes with GitHub-published SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466. The slow container download was deliberately stopped after preserving its partial bytes. WSL curl resumed the same official URL and the digest matched before extraction. The archive contains 112 entries / 1,567,506,466 uncompressed bytes. Upstream preparation with --skip-download-data then succeeded. A private archive provenance file and file inventory are under local/meld-data/provenance.
+Temporary Balanced power scheme was restored to original Power saver at 2026-11-10 21:17 UTC. Actual scheme and local/power-profile-backup.json restore_required=false verified. No paused installer or diagnostic profiler remains. New run preserves the original power scheme; AC/DC sleep timeout is 0 (never). Do not reset WSL while calculations run.
 
-Full upstream pytest, including slow tests, is RUNNING with 17 collected items. It has reached actual prediction/saliency. No final pass is claimed. Log: local/logs/meld-upstream-pytest-full.log. The original archive contains expected predictions only; generated predictions were not pre-existing. The active MELD container's CPU quota was reduced to eight logical CPUs to preserve host responsiveness. Statistics polling timed out, so resource samples have a gap; continuous sampling resumed. Observed memory is not a guaranteed peak. Clean filesystem cache was reclaimed during troubleshooting, so runtime is observational rather than a controlled benchmark.
+Keep images, models, licences, logs, downloaded sources, environments and local config out of Git. No patient data/contact information in publication.
 
-A separate bundled FreeSurfer 7.2.0 autorecon1 on the licensed public original T1 is also RUNNING, currently past two bias-correction passes. Log: local/logs/freesurfer-bundled-autorecon1.log. Outputs: local/freesurfer-validation/bundled-subjects/public-mprage. This is not a full cortical reconstruction and is not SWANe's standalone FreeSurfer.
+## GitHub and remaining scopes
 
-The standalone installer now uses official Ubuntu DEBs through apt, as upstream does not support tar installation when a package is supplied. Ubuntu 20 package MD5: 3f488ddc5c1a19fe23bb9cbe2c9f457f. Target: /usr/local/freesurfer/7.4.1. It checks checksum/package identity, free space and existing installations, and apt refuses package removals. SWANe setup is optional and is never sourced for MELD actions. The new --freesurfer-dir configuration sources the official setup only for applicable SWANe checks/GUI.
+Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. Keep draft while scientific/native-laptop acceptance is incomplete; do not merge without instruction. Latest publication and CI must be checked on actual head. The original GitHub Actions workflow remains because CLI OAuth lacks workflow scope; proposed expansion is only ignored local/launcher-expanded.yml.
 
-The full 6,687,701,644-byte package matched official MD5 3f488ddc5c1a19fe23bb9cbe2c9f457f; observed SHA-256 is 2046cdafb6939ac076e0443794d793d4ffbacf83b01e3398ce9046ffa5f4e4f7. The root installer has started its separate verification; package installation is not yet claimed. Observe its actual final status. Relevant logs: local/logs/freesurfer-package-ranges.log and local/logs/freesurfer-official-apt-install.log. Installation session 32385; downloader session 19242 / Linux PID 1489. MELD pytest session 94616; bundled autorecon1 session 78690. These sessions/PIDs are continuation hints only, not proof of current state.
+For CLI push, the working authenticated helper is /home/umut/bin/gh auth git-credential (local gh at /home/umut/bin/gh). Do not print tokens.
 
-Thirty-three offline regression cases pass, including official-package identity/checksum failure, refusing existing software, failed apt status and MELD independence from missing host FreeSurfer. Bash syntax, Python compilation and diff checks passed. GitHub publication for this follow-up is still pending.
-
-A Windows capture of the existing SWANe window timed out once. Retry fresh selection/capture after installation; do not claim a new GUI pass. The older SWANe window may still be open. Finish package installation, inspect official setup, run actual standalone version/licensed MRI/library checks, configure/recheck SWANe, inspect final pytest results and generated predictions, and update TEST_REPORT/VERSIONS/this handoff before publication. PDF reports are excluded by upstream's prediction test; report generation and any raw-MRI-to-report run remain distinct outstanding scopes.
+Remaining: finish/QC active raw-MRI case; SWANe complete study/reconstruction/export; optional MATLAB Runtime/Slicer/Synth dependencies; actual native Ubuntu laptop reproduction (requires access to that machine); independently verified interoperability. Do not treat any one completed scope as another.

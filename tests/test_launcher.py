@@ -62,12 +62,22 @@ class LauncherTests(unittest.TestCase):
         with patch.object(n.os, 'getuid', return_value=1000, create=True), patch.object(n.os, 'getgid', return_value=1000, create=True), patch.dict(n.os.environ), patch.object(n, 'run', return_value=subprocess.CompletedProcess([], 0, json.dumps(model))):
             cmd = n.compose(self.config)
             self.assertNotIn(str(self.release / 'compose.yml'), cmd)
-            generated = json.loads((self.state / 'compose.cpu.json').read_text())
+            generated = json.loads(Path(cmd[-1]).read_text())
             service = generated['services']['meld_graph']
             self.assertEqual(service['image'], self.config['meld_image_digest'])
             self.assertEqual(service['volumes'][0]['source'], self.config['data'])
             self.assertNotIn('devices', service['deploy']['resources']['reservations'])
             self.assertEqual(generated['secrets'], model['secrets'])
+
+    def test_compose_snapshots_do_not_overwrite_active_data_mount(self):
+        model = {'services': {'meld_graph': {'image': 'example/image:tag'}}}
+        with patch.object(n.os, 'getuid', return_value=1000, create=True), patch.object(n.os, 'getgid', return_value=1000, create=True), patch.dict(n.os.environ), patch.object(n, 'run', return_value=subprocess.CompletedProcess([], 0, json.dumps(model))):
+            first = Path(n.compose(self.config)[-1])
+            second_config = dict(self.config, data='/different/input')
+            second = Path(n.compose(second_config)[-1])
+        self.assertNotEqual(first, second)
+        self.assertEqual(json.loads(first.read_text())['services']['meld_graph']['volumes'][-1]['source'], self.config['data'])
+        self.assertEqual(json.loads(second.read_text())['services']['meld_graph']['volumes'][-1]['source'], '/different/input')
 
     def test_non_linux_install_blocked(self):
         with patch.object(n.platform, 'system', return_value='Windows'), patch.object(n, 'run') as runner:
@@ -91,10 +101,30 @@ class LauncherTests(unittest.TestCase):
     def test_subject_is_single_argument(self):
         with patch.object(n, 'linux'), patch.object(n, 'compose', return_value=['docker', 'compose']), patch.object(n, 'run') as runner:
             self.assertEqual(n.main(['run-meld', '--subject', 'sub-001']), 0)
-            self.assertEqual(runner.call_args.args[0][-2:], ['-id', 'sub-001'])
+            calls = [call.args[0] for call in runner.call_args_list]
+            pipeline = next(call for call in calls if 'scripts/new_patient_pipeline/new_pt_pipeline.py' in call)
+            self.assertEqual(pipeline[-2:], ['-id', 'sub-001'])
+            self.assertEqual(calls[-1][-3], 'post')
             runner.reset_mock()
             self.assertEqual(n.main(['run-meld', '--subject', 'sub-001; echo bad']), 1)
             runner.assert_not_called()
+
+    def test_meld_preflight_failure_stops_pipeline(self):
+        with patch.object(n, 'linux'), patch.object(n, 'compose', return_value=['docker', 'compose']), patch.object(n, 'run', side_effect=subprocess.CalledProcessError(2, 'preflight')) as runner:
+            self.assertEqual(n.main(['run-meld', '--subject', 'sub-001']), 2)
+            self.assertEqual(runner.call_count, 1)
+
+    def test_meld_postcheck_failure_cannot_pass(self):
+        with patch.object(n, 'linux'), patch.object(n, 'compose', return_value=['docker', 'compose']), patch.object(n, 'run', side_effect=[None, None, subprocess.CalledProcessError(2, 'postcheck')]):
+            self.assertEqual(n.main(['run-meld', '--subject', 'sub-001']), 2)
+            self.assertEqual(json.loads((self.state / 'last-action.json').read_text())['status'], 'FAILED')
+
+    def test_meld_data_override_does_not_change_configuration(self):
+        with patch.object(n, 'linux'), patch.object(n, 'compose', return_value=['docker', 'compose']) as composer, patch.object(n, 'run'):
+            target = str(self.state / 'separate-data')
+            self.assertEqual(n.main(['run-meld', '--subject', 'sub-001', '--data', target]), 0)
+            self.assertEqual(composer.call_args.args[0]['data'], target)
+            self.assertEqual(n.load()['data'], self.config['data'])
 
     def test_swane_can_configure_without_meld(self):
         n.CONFIG.unlink()

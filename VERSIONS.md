@@ -1,11 +1,11 @@
-# Versions and provenance — 2026-11-10
+# Versions and provenance — 2026-11-11
 
 These are observed WSL development versions, not a native Ubuntu compatibility certification.
 
 | Component | Observed version / immutable source | Validation |
 | --- | --- | --- |
 | Ubuntu | 20.04.6 LTS, WSL2, x86_64 | Actual development host |
-| WSL RAM after follow-up | 24.4558 GiB visible inside Ubuntu and the MELD container; 25 GiB configured ceiling | Actual container capacity check; no prediction stress test |
+| WSL RAM after follow-up | 24.4558 GiB visible inside Ubuntu and the MELD container; 25 GiB configured ceiling | Actual container capacity and full upstream prediction suite; true peak unmeasured |
 | Main SWANe Python | 3.11.14 (isolated venv) | Package, GUI and real T1 reference test |
 | Clean-clone Python | 3.11.18 (new isolated venv) | Exact lock match and package checks |
 | SWANe | 0.2.1.1, PyPI | Published release; newer development features excluded |
@@ -16,11 +16,11 @@ These are observed WSL development versions, not a native Ubuntu compatibility c
 | FSL | Partial 6.0.7.8 manifest components | Actual T1 reference workflow; not all modules |
 | Docker | 29.9.3 static, official stable binary | Actual hello-world and MELD container smoke |
 | Compose | 5.7.0 | Official release checksum verified; actual CPU config |
-| MELD Graph | v2.2.7, source e523c9de4677cfc46efe97069fe59442be160788 | Installed container/config/imports; scientific verification blocked |
+| MELD Graph | v2.2.7, source e523c9de4677cfc46efe97069fe59442be160788 | Full upstream pytest: 17 passed; separate report generated; fresh raw-MRI run pending |
 | MELD image | meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef | amd64 Linux, image size 18,243,989,272 bytes |
 | Container runtime | Python 3.9.25, torch 1.10.0+cu102, working directory /app | Actual import smoke, no GPU used |
-| MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Actual licensed MRI format roundtrip passed; autorecon1 running; full reconstruction pending |
-| SWANe standalone FreeSurfer | Official Ubuntu 20.04 DEB 7.4.1 | MD5 verified; apt installation running; operational checks pending |
+| MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Licensed format roundtrip and public-T1 autorecon1 passed; fresh full reconstruction running |
+| SWANe standalone FreeSurfer | Official Ubuntu 20.04 DEB 7.4.1 | Official DEB installed via apt; ELF/version/licensed format checks and SWANe GUI detection passed |
 | SWANe MATLAB Runtime / Slicer | Not installed | Applicable modules/export remain pending |
 | Native Ubuntu 22.04/24.04 | Candidate laptop targets | No native-laptop acceptance run |
 
