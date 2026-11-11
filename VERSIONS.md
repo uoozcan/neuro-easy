@@ -21,7 +21,9 @@ These are observed WSL development versions, not a native Ubuntu compatibility c
 | Container runtime | Python 3.9.25, torch 1.10.0+cu102, working directory /app | Actual import smoke, no GPU used |
 | MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Licensed format roundtrip and public-T1 autorecon1 passed; fresh full reconstruction running |
 | SWANe standalone FreeSurfer | Official Ubuntu 20.04 DEB 7.4.1 | Official DEB installed via apt; ELF/version/licensed format checks, Freeview display/navigation and SWANe GUI detection passed |
-| SWANe MATLAB Runtime / Slicer | Not installed | Applicable modules/export remain pending |
+| MATLAB Runtime for native FreeSurfer | R2019b Update 9, 9.7.0.1737446, MCRv97 | Installed; checkMCR and actual compiled runtime startup verified; no subfield segmentation pass |
+| 3D Slicer | 5.12.4 revision 34645, Git 4e21c19 | Publisher SHA-512 matched; actual version/libraries, SWANe detection, T1 scene export/reload and WSLg display passed |
+| Slicer extensions | SlicerFreeSurfer fe78ea4; SurfaceWrapSolidify 6006814 | Installed for revision 34645; actual importer/wrap modules loaded |
 | Native Ubuntu 22.04/24.04 | Candidate laptop targets | No native-laptop acceptance run |
 
 SWANe wheel SHA-256:
@@ -61,3 +63,7 @@ Official sources: [MELD release](https://github.com/MELDProject/meld_graph/relea
 Official FreeSurfer Ubuntu 20.04 7.4.1 DEB: 6,687,701,644 bytes; MD5 3f488ddc5c1a19fe23bb9cbe2c9f457f; observed SHA-256 2046cdafb6939ac076e0443794d793d4ffbacf83b01e3398ce9046ffa5f4e4f7.
 
 Official MELD data asset SHA-256: f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466 (701,224,128 bytes); matched GitHub asset metadata before extraction.
+
+MATLAB Runtime R2019b Update 9 official ZIP: 2,786,688,287 bytes; observed SHA-256 d213e2960a20332f121ec4addf81469b2a2aab2ad8b4ed4226875da6e8af7c65; ZIP CRC passed, no independent publisher digest located.
+
+Slicer 5.12.4 Linux amd64 archive: 498,717,156 bytes; matched publisher SHA-512 ac76c5061a8fff20d4e59732855f74360930fd4891450085bcbc6a8eb1a1f4ade9a1ca4fc633142661b714dbe8c4604306079f9546e52053faa5e6f99410cf76.

@@ -12,7 +12,7 @@ This section supersedes earlier licence blockers and in-progress installation st
 | Separate report generation | Four-page PDF generated, exit 0; all pages inspected, with header clipping on pages 2/3 |
 | Bundled FreeSurfer 7.2 autorecon1 | Public original T1 completed, exit 0; limited visual/numeric QC |
 | Standalone FreeSurfer 7.4.1 | Official DEB installed through apt, exit 0; version, selected ELF libraries and licensed MRI conversion pass |
-| Fresh SWANe WSLg GUI | Detects FreeSurfer 7.4.1, FSL, dcm2niix and Graphviz; optional dependency warnings remain |
+| Fresh SWANe WSLg GUI | Detects FreeSurfer 7.4.1, MATLAB Runtime, Slicer 5.12.4, FSL, dcm2niix and Graphviz; Synth version recommendation remains |
 | Offline launcher tests | 37 passed; external application/network calls mocked |
 | Fresh raw T1 through MELD | RUNNING; launched 2026-11-11 12:31 UTC, reconstruction started; no final pass |
 
@@ -65,7 +65,29 @@ The launcher now checks actual finite, varying 3D MRI input in the pinned contai
 
 Publication: commit 5bb246a9ba8c98148c2e0d705bc27d2d80993538 passed GitHub Actions Launcher tests only run 43022131830. Its 37 offline cases do not validate scientific execution. Draft PR remains https://github.com/uoozcan/neuro-easy/pull/1.
 
-Remaining separate scopes: raw-MRI run completion/QC, SWANe full study/reconstruction/export, optional MATLAB Runtime/Slicer/Synth dependencies, native Ubuntu laptop reproduction and SWANe-to-MELD interoperability. The historical sections below retain prior attempts and blockers; their older licence/installation statements are superseded here.
+Remaining separate scopes: raw-MRI run completion/QC, SWANe full study/reconstruction/export, Synth version/features, full subfield/multimodal validation, native Ubuntu laptop reproduction and SWANe-to-MELD interoperability. The historical sections below retain prior attempts and blockers; their older licence/installation statements are superseded here.
+
+### Requested MATLAB Runtime and Slicer installation — completed 2026-11-11
+
+The user requested installation of the remaining MATLAB Runtime and 3D Slicer requirements and personally accepted the exact packaged MATLAB Runtime licence before the installer agreement step.
+
+MATLAB Runtime R2019b Update 9 (9.7.0.1737446) installed successfully, vendor exit 0. The 2,786,688,287-byte official MathWorks ZIP came from the URL embedded in installed FreeSurfer 7.4.1 fs_install_mcr. ZIP CRC passed; observed SHA-256 d213e2960a20332f121ec4addf81469b2a2aab2ad8b4ed4226875da6e8af7c65. No independent publisher digest was located, so this is a recorded local digest rather than an independently authenticated checksum. The reviewed vendor installer ran against a new project staging target; its completed v97 directory was placed at /usr/local/freesurfer/7.4.1/MCRv97 with root ownership, matching FreeSurfer's layout. Existing installations were not replaced and no global LD_LIBRARY_PATH or shell-profile changes were made.
+
+Actual checkMCR.sh exits 0. The release-matched compiled segmentSubjectT1_autoEstimateAlveusML executable initializes the Runtime and reaches its MATLAB function, then exits 1 with MATLAB:minrhs because the diagnostic deliberately supplies no MRI/subject arguments. This expected argument error is runtime-startup evidence, not a hippocampal segmentation pass. SWANe's actual dependency check and fresh GUI no longer show the optional missing-MATLAB warning. FreeSurfer's >=8.1 Synth recommendation remains.
+
+Slicer 5.12.4 revision 34645 installed at local/apps/Slicer-5.12.4-linux-amd64. The official 498,717,156-byte archive matches publisher SHA-512 ac76c5061a8fff20d4e59732855f74360930fd4891450085bcbc6a8eb1a1f4ade9a1ca4fc633142661b714dbe8c4604306079f9546e52053faa5e6f99410cf76. Initial launcher attempts exposed missing libpcre2-16.so.0 and then libpulse-mainloop-glib.so.0/libOpenGL.so.0. Installing Ubuntu packages libpcre2-16-0, libpulse-mainloop-glib0 and libopengl0 resolved them. Slicer --version now returns 0 / 5.12.4; ldd through Slicer's configured launcher environment reports no missing application libraries. Raw ldd without that environment had misleadingly listed bundled libraries as missing; that was not treated as a host dependency list.
+
+Installed required extensions through Slicer's application API: SlicerFreeSurfer metadata revision fe78ea4 and SurfaceWrapSolidify revision 6006814, built for Slicer revision 34645. A fresh instance verified actual freesurferimporter and segmenteditorwrapsolidify modules loaded. Extension names themselves are not Python module names; initial attribute probes using extension names returned false, without indicating installation failure. SWANe's unmodified checker completed successfully and its real GUI displays Slicer detected (5.12.4). No SWANe code compatibility patch was needed.
+
+Backed up existing SWANe settings and configured the exact Slicer executable through its own ConfigManager API, eliminating the unbounded filesystem search. The old idle GUI was closed; its remaining verified read-only find process was stopped without touching MELD. The previous ~/.slicerrc.py was absent; successful SWANe detection created its normal HideZero display hook. No existing startup script was replaced.
+
+Actual minimal scene-export test: unmodified SWANe slicer_script_result.py loaded the already-validated public ref/ref_brain outputs and saved scene.mrb (31,736,507 bytes). MRB CRC and embedded MRML checks pass. Reloaded both finite (192,256,170) volumes. An initial exact-IJK hash assertion failed: Slicer reversed K and shifted its index origin by 169. The corrected physical-space check explicitly verifies an integer signed-axis mapping, complete voxel extents and affine correspondence within 1e-4, then compares all reindexed float32 voxel bytes exactly. Both volumes pass with no interpolation or voxel-value changes. The initial failure/log are preserved privately; this is a coordinate-convention correction, not a relaxed intensity tolerance.
+
+The actual Slicer WSLg GUI opened this scene and displayed axial, coronal and sagittal MRI views. This is real display and minimal T1 export/reload acceptance, not a complete multimodal study, FreeSurfer surface registration, subfield segmentation or clinical-accuracy validation. Current Slicer documentation recommends newer Ubuntu; these are observed tests on the existing Ubuntu 20.04 WSL system, not certification of every module.
+
+Private evidence: local/optional-dependencies/{mcr-install-result,slicer-install,slicer-extensions,slicer-gui-module-check,swane-gui-validation}.json, local/slicer-export-validation/scene-validation.json and local/logs/{mcr-install,mcr-compiled-runtime-probe,slicer-swane-export,slicer-scene-reload-canonical,slicer-gui}.log. Licences, MRI, application binaries and private configuration remain excluded from Git. The independent full raw-T1 MELD run remained active throughout installation; no end-to-end MELD pass is inferred.
+
+Official references: [MathWorks Runtime installation](https://www.mathworks.com/help/mps/server/install-the-matlab-runtime.html), [Slicer download/checksums](https://download.slicer.org/), [Slicer requirements](https://slicer.readthedocs.io/en/latest/user_guide/getting_started.html).
 
 ## Follow-up: RAM allocation and extended GUI inspection
 

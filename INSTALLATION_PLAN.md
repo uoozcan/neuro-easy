@@ -96,7 +96,19 @@ recon-all -version
 
 Check shared libraries, real licence-requiring MRI commands and SWANe detection. A version or format conversion test is not cortical reconstruction. Run actual MRI reconstruction and inspect its outputs/QC before claiming that scope.
 
-FreeSurfer 7.4.1 does not enable SWANe's >=8.1 Synth options. MATLAB Runtime and Slicer remain separate dependencies for applicable modules/export.
+FreeSurfer 7.4.1 does not enable SWANe's >=8.1 Synth options. MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 are now installed and detected on this host; other machines still require their own installation.
+
+## 6. MATLAB Runtime and Slicer follow-up
+
+Completed on 2026-11-11 after the user's separate MATLAB Runtime licence acceptance. MATLAB Runtime R2019b Update 9 is installed at /usr/local/freesurfer/7.4.1/MCRv97. checkMCR.sh succeeds and a compiled executable reaches its own MATLAB argument validation. No subfield segmentation is implied.
+
+For another machine, inspect the installed fs_install_mcr script and the exact MathWorks Runtime licence before its silent agreement step. The vendor-supported command is fs_install_mcr R2019b with FREESURFER_HOME set to the intended installation; system-directory installation requires sudo. This session used the same official package via a verified staged download and new target, then placed v97 as MCRv97. Do not globally append its old library paths to the shell profile; FreeSurfer wrappers supply them per process.
+
+Slicer 5.12.4 revision 34645 is under local/apps/Slicer-5.12.4-linux-amd64. Official archive size/SHA-512 are in VERSIONS.md. Ubuntu host libraries added: libpcre2-16-0, libpulse-mainloop-glib0 and libopengl0. The required SlicerFreeSurfer and SurfaceWrapSolidify extensions are installed; their actual module names differ from extension names.
+
+For another machine, download the official Linux archive, compare its publisher checksum before extracting, and install the two extensions through Slicer's Extension Manager. Set the exact Slicer executable in SWANe Application Settings. This host's existing SWANe settings were backed up and updated through ConfigManager; the fresh GUI confirms detection. Keep Slicer's Python/Qt libraries separate from SWANe and MATLAB Runtime.
+
+The unmodified SWANe minimal public-T1 exporter saved a valid scene, which reloaded with exact voxel preservation after accounting for Slicer's signed K-axis reindexing. The real GUI displayed the scene. Complete multimodal export, subfields and full raw-MELD scientific acceptance remain separate tests.
 
 ## Evidence and resume
 

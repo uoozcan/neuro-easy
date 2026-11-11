@@ -12,6 +12,7 @@ Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOF
 - The real public T1 DICOM reference subworkflow completed and its outputs were inspected; see TEST_REPORT.md.
 - MELD preparation and all 17 upstream tests passed; a separate reference PDF was generated with layout limitations. A fresh raw-MRI run is in progress.
 - Standalone FreeSurfer 7.4.1 is installed and detected by the fresh SWANe GUI; MELD retains bundled 7.2.
+- MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 with required extensions are installed. SWANe detection and a real minimal T1 scene export/reload/display passed.
 - Offline CI tests launcher behavior only. It does not validate either scientific application.
 
 Ubuntu 22.04/24.04 are candidate native targets. Current Docker apt documentation supports them; it no longer lists Ubuntu 20.04. Do not upgrade/reset an existing WSL distribution as part of this setup. The local Ubuntu 20.04 development session uses isolated official Docker static binaries; that test setup needs manual updates and is not the recommended laptop installation route.
@@ -60,7 +61,7 @@ bash start.sh open-swane
 
 The tested linux-64 package set is recorded in requirements-fsl-linux-64.lock; --locked reuses those exact public package URLs. The FSL installer uses official FSL/conda-forge channels in a separate local/fsl-env. It pins the requested components to the official 6.0.7.8 release manifest and installs FSL's wrapper generator. This is a **partial FSL installation for T1 reference preprocessing**, not every SWANe module. The launcher exposes FSL's command wrappers without putting FSL's Python ahead of SWANe.
 
-For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export. See TEST_REPORT.md for the current standalone installation state; MATLAB Runtime and Slicer remain uninstalled. MELD's bundled FreeSurfer is separate and is not reused.
+For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export. This host has FreeSurfer 7.4.1, MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 with SlicerFreeSurfer/SurfaceWrapSolidify installed and detected. The >=8.1 Synth options and complete multimodal/subfield workflows remain unvalidated. See TEST_REPORT.md for exact scope and INSTALLATION_PLAN.md for installation details. MELD's bundled FreeSurfer is separate and is not reused.
 
 ### Reproduce the public T1 reference test
 

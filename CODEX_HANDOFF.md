@@ -18,7 +18,7 @@ The user explicitly accepted FSL and personally completed both FreeSurfer and ME
 - Real SWANe public-T1 reference subworkflow passed with five checked outputs and limited 15-slice QC. Retry reused completed nodes; 1447.89 seconds is not a fresh whole-pipeline benchmark. A separate clean source clone/env reproduced exact Python/FSL locks and package/dependency checks on this same WSL OS.
 - Public DICOM GUI import: 192 files match hashes; workflow graph generated and inspected. No GUI-driven scientific execution or Slicer export.
 - Official FreeSurfer 7.4.1 Ubuntu20 DEB installed through apt, exit 0, at /usr/local/freesurfer/7.4.1. Official MD5 and observed SHA-256 are in VERSIONS.md. Selected ELF libraries, version and real licensed MRI format roundtrip pass. Actual Freeview WSLg display and linked-plane navigation on the public test T1 also passed (local/freesurfer-validation/native-741/freeview-gui.json). No full native 7.4 reconstruction. Setup reviewed; NO_FSFAST=1 avoids modifying MATLAB startup, FSLDIR is seeded, no .bashrc edits.
-- A fresh SWANe WSLg GUI was inspected on 2026-11-11 and detects FreeSurfer 7.4.1/FSL/dcm2niix/Graphviz. It warns >=8.1 recommended for Synth and optional MATLAB Runtime R2019b absent. Slicer remains uninstalled and its automatic search is unbounded.
+- A fresh SWANe WSLg GUI was inspected on 2026-11-11 and detects FreeSurfer 7.4.1/FSL/dcm2niix/Graphviz. The later requested dependency installation completed: MATLAB Runtime R2019b Update 9 (9.7.0.1737446) at /usr/local/freesurfer/7.4.1/MCRv97, and Slicer 5.12.4 revision 34645 under local/apps/Slicer-5.12.4-linux-amd64. SlicerFreeSurfer/SurfaceWrapSolidify extensions are installed and their actual modules load. Fresh SWANe GUI detects both; only the >=8.1 Synth recommendation remains. The exact Slicer path is configured with prior settings backed up; the old GUI was closed and only its lingering read-only find process stopped.
 - Local Docker static 29.9.3 / Compose 5.7.0, dedicated local/docker.sock and local/docker-data. Project daemon is session-managed; TEST_REPORT.md has its exact custom-subnet restart command. WSL restarted before the next-day continuation, and only this existing daemon was restarted.
 - MELD v2.2.7 CPU pinned image: meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef. Bundles FreeSurfer 7.2.0; host 7.4 must never replace it.
 - Official MELD data SHA-256 f739a9c9b9efbda22dec150a9099929bebb6975177d5dc1771cdb620eb3af466 verified; preparation exited 0. Data/models remain ignored.
@@ -27,6 +27,8 @@ The user explicitly accepted FSL and personally completed both FreeSurfer and ME
 - Initial private QA compared prediction grid to the empty placeholder and failed; corrected comparison to FS orig/001.mgz passed. Both records retained.
 - Separate actual report-only test generated a four-page PDF from existing predictions and matching supplied MRI, exit 0. All pages rendered and inspected. Headers on pages 2/3 clip in unmodified upstream output; record this limitation. local/meld-report-validation/result.json, no new inference/reconstruction.
 - Separate bundled FS7.2 autorecon1 passed on original public T1, exit 0 in 5401.18 seconds. Finite/matching images; limited QC showed no gross sampled truncation and some extracerebral remnants. Not full cortical reconstruction.
+- The user personally accepted the exact packaged MATLAB Runtime licence before its agreement step. Vendor installer exit 0, checkMCR exit 0. A deliberate no-argument compiled-runtime probe reaches MATLAB:minrhs and exits 1; this verifies initialization, not segmentation. No global LD_LIBRARY_PATH change.
+- SWANe's unmodified T1 Slicer exporter created a 31,736,507-byte MRB. Reload CRC/MRML checks and exact voxel/world-geometry checks passed after explicitly accounting for K reversal +169 index shift. Initial exact-grid failure is retained. Actual Slicer WSLg scene display passed. Extension names are not module identifiers; actual freesurferimporter/segmenteditorwrapsolidify modules were verified. No third-party code patch was needed. See TEST_REPORT.md and local/optional-dependencies evidence.
 - Thirty-seven offline regression tests pass, including fail-closed pre/post checks. Bash syntax, Python compilation, diff checks passed. CI remains separate from actual scientific acceptance.
 
 ## Active fresh raw-MRI run — inspect, do not duplicate
@@ -48,7 +50,7 @@ Observe these files:
 - local/meld-raw-validation/.neuro-easy/sub-publicqa.json — input hashes/image and structural output status
 - local/meld-raw-validation/output/predictions_reports/sub-publicqa — eventual prediction/report
 
-Tool session 98765 runs the pipeline; daemon session 27305 and GUI session 1969; Freeview session 84631. These are continuation hints, not current-state proof. Container name initially meld-release-meld_graph-run-fa2d0d41814d. Use actual ps/status/logs before acting.
+Tool session 98765 runs the pipeline; daemon session 27305 and Old GUI session 1969 is closed; new SWANe session 68024, Slicer GUI session 27218, Freeview session 84631. Runtime installer session 73006 finished 0. These are continuation hints, not current-state proof. Container name initially meld-release-meld_graph-run-fa2d0d41814d. Use actual ps/status/logs before acting.
 
 Do not claim full raw-MRI pass until actual final exit, all stages, fresh outputs and visual reconstruction/registration/report QC complete. Structural checks are not clinical accuracy. If upstream exits 0 on a failure, postcheck must reject missing/stale outputs. A negative actual test rejected the empty official T1 with exit 2 and never started analysis.
 
@@ -68,4 +70,4 @@ Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. Keep draft while scienti
 
 For CLI push, the working authenticated helper is /home/umut/bin/gh auth git-credential (local gh at /home/umut/bin/gh). Do not print tokens.
 
-Remaining: finish/QC active raw-MRI case; SWANe complete study/reconstruction/export; optional MATLAB Runtime/Slicer/Synth dependencies; actual native Ubuntu laptop reproduction (requires access to that machine); independently verified interoperability. Do not treat any one completed scope as another.
+Remaining: finish/QC active raw-MRI case; SWANe complete study/reconstruction/export; Synth version/features and complete subfield/multimodal validation; actual native Ubuntu laptop reproduction (requires access to that machine); independently verified interoperability. Do not treat any one completed scope as another.
