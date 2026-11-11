@@ -51,10 +51,10 @@ def installed_package():
     return result.stdout.strip() if result.returncode == 0 else ''
 
 
-def validate_package(path):
+def validate_package(path, version=VERSION):
     result = launcher.run(['dpkg-deb', '--show', '--showformat=${Package} ${Version} ${Architecture}', path],
                           capture=True)
-    if result.stdout.strip() != 'freesurfer 7.4.1 amd64':
+    if result.stdout.strip() != 'freesurfer ' + version + ' amd64':
         raise ValueError('Unexpected FreeSurfer package name, version or architecture.')
 
 

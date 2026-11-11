@@ -128,6 +128,8 @@ def runtime_environment(config, include_freesurfer=False):
         environment = dict(os.environ, FREESURFER_HOME=str(home))
         # Structural setup must not create/modify a MATLAB startup file.
         environment.setdefault('NO_FSFAST', '1')
+        # The v8 fast recon-all can exceed this WSL host's memory by a wide margin.
+        environment.setdefault('FS_V8_XOPTS', '0')
         fsl_home = Path(config.get('fsl_dir', STATE / 'fsl-env'))
         if (fsl_home / 'etc/fslversion').is_file():
             environment['FSLDIR'] = str(fsl_home)

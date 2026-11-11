@@ -49,6 +49,15 @@ class LauncherTests(unittest.TestCase):
         with patch.object(n, 'linux'):
             self.assertEqual(n.main(['license-status']), 0)
 
+    def test_host_freesurfer_defaults_to_classic_v8_mode(self):
+        home = self.state / 'freesurfer8'
+        home.mkdir()
+        (home / 'SetUpFreeSurfer.sh').write_text('# offline fixture only')
+        result = subprocess.CompletedProcess([], 0, b'', b'')
+        with patch.dict(n.os.environ, {'PATH': '/usr/bin'}, clear=True), patch.object(n.subprocess, 'run', return_value=result) as runner:
+            n.runtime_environment({'freesurfer_dir': str(home)}, include_freesurfer=True)
+            self.assertEqual(runner.call_args.kwargs['env']['FS_V8_XOPTS'], '0')
+
     def test_empty_license_rejected(self):
         (self.release / 'license.txt').write_text('')
         with self.assertRaises(ValueError):
