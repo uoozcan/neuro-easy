@@ -10,7 +10,7 @@ Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOF
 - The installed application's own checks detect dcm2niix, partial FSL 6.0.7.8 and Graphviz.
 - Real Docker hello-world and CPU Compose configuration checks pass.
 - The real public T1 DICOM reference subworkflow completed and its outputs were inspected; see TEST_REPORT.md.
-- MELD preparation and all 17 upstream tests passed; a separate reference PDF was generated with layout limitations. The separate raw-MRI attempt failed with exit 137; its cause and end-to-end acceptance remain unresolved.
+- MELD preparation and all 17 upstream tests passed; a separate reference PDF was generated with layout limitations. The separate raw-MRI attempt was stopped (SIGTERM then SIGKILL, exit 137) and is left stopped at explicit user request; raw-MRI-to-report acceptance remains incomplete.
 - Standalone FreeSurfer 8.1.0 is installed and detected by SWANe. The full configured T1/classic reconstruction finished with checked images, surfaces/statistics and limited visual QC; MELD retains bundled 7.2.
 - MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 with required extensions are installed. SWANe detection and a real minimal T1 scene export/reload/display passed.
 - Offline CI tests launcher behavior only. It does not validate either scientific application.

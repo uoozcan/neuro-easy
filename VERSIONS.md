@@ -16,7 +16,7 @@ These are observed WSL development versions, not a native Ubuntu compatibility c
 | FSL | Partial 6.0.7.8 manifest components | Actual T1 reference workflow; not all modules |
 | Docker | 29.9.3 static, official stable binary | Actual hello-world and MELD container smoke |
 | Compose | 5.7.0 | Official release checksum verified; actual CPU config |
-| MELD Graph | v2.2.7, source e523c9de4677cfc46efe97069fe59442be160788 | Full upstream pytest: 17 passed; separate report generated; raw-MRI attempt failed 137, cause unresolved |
+| MELD Graph | v2.2.7, source e523c9de4677cfc46efe97069fe59442be160788 | Full upstream pytest: 17 passed; separate report generated; raw-MRI attempt stopped, exit 137; left stopped at user request |
 | MELD image | meldproject/meld_graph@sha256:c02adca0cf8e647762f7d09705bc1718079b190794a926b38d1521a6bb72c0ef | amd64 Linux, image size 18,243,989,272 bytes |
 | Container runtime | Python 3.9.25, torch 1.10.0+cu102, working directory /app | Actual import smoke, no GPU used |
 | MELD bundled FreeSurfer | /opt/freesurfer-7.2.0 in image | Licensed format roundtrip and public-T1 autorecon1 passed; fresh full reconstruction attempt later ended 137, not accepted |

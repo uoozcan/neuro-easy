@@ -4,7 +4,7 @@ Read AGENTS.md, README.md, IMPLEMENTATION_PROMPT.md, TEST_REPORT.md and relevant
 
 ## Current outcome — 2026-11-12
 
-FreeSurfer 8.1.0 is installed and selected for SWANe. The configured public-T1 structural workflow plus complete classic reconstruction finished and passed structural checks and limited sampled visual QC. The separate MELD raw-MRI attempt FAILED with exit 137; do not describe the combined setup as fully end-to-end accepted.
+FreeSurfer 8.1.0 is installed and selected for SWANe. The configured public-T1 structural workflow plus complete classic reconstruction finished and passed structural checks and limited sampled visual QC. The separate MELD raw-MRI attempt ended 137 after a recorded stop sequence. On 2026-11-12 the user explicitly said "Leave MELD stopped". Preserve it and do not resume unless the user changes that instruction. Do not describe the combined setup as fully end-to-end accepted.
 
 Active checkout: /home/umut/projects/neuro-easy, Ubuntu-20.04 WSL2, branch codex/wsl-install-validation. The separate Windows cwd D:/Users/uonur/Documents/ChatGPT/neuro-easy remains a separate repository. Draft PR: https://github.com/uoozcan/neuro-easy/pull/1. Keep draft; do not merge/force-push.
 
@@ -46,9 +46,9 @@ Preparation and official data SHA-256 passed. Full actual upstream pytest: 17 co
 
 Separate actual four-page PDF generation passed using existing predictions/matching supplied anatomy; all pages reviewed, upstream headers clip on pages 2/3. Not a new raw-MRI run. Separate bundled FS7.2 autorecon1 passed on original public T1 (5401.18s), limited QC; not full cortex.
 
-Fresh run command was bash start.sh run-meld --subject sub-publicqa --threads 4 --data "$PWD/local/meld-raw-validation". Started 2026-11-11 12:31 UTC; FAILED exit 137 at 19:34:46 UTC, elapsed 7:03:39. Status local/meld-run-sub-publicqa.json and local/logs/meld-public-raw-pipeline.log are authoritative. FS/scripts/recon-all.log has incomplete reconstruction; no accepted fresh prediction/report. Exit 137 does not itself establish OOM; current dmesg OOM search had no corroborating record. Cause/resume remain unresolved. Do not claim still RUNNING or successful.
+Fresh run command was bash start.sh run-meld --subject sub-publicqa --threads 4 --data "$PWD/local/meld-raw-validation". Started 2026-11-11 12:31 UTC; FAILED exit 137 at 19:34:46 UTC, elapsed 7:03:39. Status local/meld-run-sub-publicqa.json and local/logs/meld-public-raw-pipeline.log are authoritative. FS/scripts/recon-all.log has incomplete reconstruction; no accepted fresh prediction/report. Exit 137 does not itself establish OOM; current dmesg OOM search had no corroborating record. Docker event history confirms SIGTERM at 19:34:10 UTC, SIGKILL at 19:34:40, then stop/die 137. Actor/reason are not recorded. Evidence: local/meld-termination-validation.json. The current user instruction is to leave MELD stopped. Do not restart it, claim still RUNNING or call it successful.
 
-Preserve incomplete local/meld-raw-validation and its .neuro-easy/sub-publicqa.json provenance. Diagnose termination and review pinned upstream partial-subject resume handling before continuing. Do not delete data or reuse host FS8 outputs to force a pass. New launcher uses unique Compose snapshots per invocation and provenance/output guards; do not bypass them. Upstream can exit 0 on failures, so final native-space predictions/PDF and visual QC are required.
+Preserve incomplete local/meld-raw-validation and its .neuro-easy/sub-publicqa.json provenance. Leave it stopped as requested. Only after a new user instruction, review pinned upstream partial-subject resume handling before continuing. Do not delete data or reuse host FS8 outputs to force a pass. New launcher uses unique Compose snapshots per invocation and provenance/output guards; do not bypass them. Upstream can exit 0 on failures, so final native-space predictions/PDF and visual QC are required.
 
 ## Resources, publication and next work
 
@@ -58,4 +58,4 @@ Original Power saver is restored. The 2026-11-11 Balanced trial showed no measur
 
 Source 95eb322 passed 44 offline cases locally and CI 43046059389. External app calls are mocked; filesystem preservation/failure tests use real temporary paths. The current documentation commit needs its actual head CI observed. Keep original workflow (CLI OAuth lacks workflow scope). Authenticated push helper: git -c credential.helper= -c 'credential.helper=!/home/umut/bin/gh auth git-credential' push; never print tokens.
 
-Next: investigate/resume the separate pinned MELD raw-MRI case; complete combined Slicer study export, subfield/multimodal/other Synth workflow checks; reproduce on the actual native Ubuntu laptop (needs access); validate any proposed cross-application handoff independently. Installation, a selected end-to-end structural case and clinical accuracy are different acceptance levels.
+Next: preserve the separate pinned MELD raw-MRI case in its stopped state per explicit user instruction; complete combined Slicer study export, subfield/multimodal/other Synth workflow checks; reproduce on the actual native Ubuntu laptop (needs access); validate any proposed cross-application handoff independently. Installation, a selected end-to-end structural case and clinical accuracy are different acceptance levels.

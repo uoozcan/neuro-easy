@@ -6,7 +6,7 @@ Updated 2026-11-12. Continue the existing Ubuntu WSL installation; do not reinst
 
 | Use | Version | Current state |
 | --- | --- | --- |
-| MELD Graph | v2.2.7 CPU, pinned digest in VERSIONS.md | Prepared; all 17 upstream tests passed; raw-MRI attempt failed 137, cause unresolved |
+| MELD Graph | v2.2.7 CPU, pinned digest in VERSIONS.md | Prepared; all 17 upstream tests passed; raw-MRI attempt stopped, exit 137; leave stopped at user request |
 | FreeSurfer used by MELD | 7.2.0 inside the MELD image | Licensed conversion and public-T1 autorecon1 passed |
 | Standalone FreeSurfer for SWANe | 8.1.0 official Ubuntu20 DEB | Installed via explicit apt upgrade; configured complete classic T1 reconstruction and CPU SynthStrip output/QC checks pass; 7.4.1 retained as unmanaged fallback |
 | SWANe | 0.2.1.1 | Installed; T1 reference test and GUI evidence in TEST_REPORT.md |
@@ -51,7 +51,7 @@ The observed official data archive is 701,224,128 bytes with SHA-256 f739a9c9b9e
 
 Capture actual exit codes, model/test-data paths, runtime/resource observations, and pytest collection/failures/skips. Upstream verification may use preprocessed inputs and does not prove a raw-MRI reconstruction pass.
 
-The fresh original public-T1 attempt in local/meld-raw-validation ended with exit 137; its cause and safe resume remain unresolved. For another subject, run an independently licensed/public/deidentified raw subject using MELD's documented input layout. Inspect predictions, geometry, reports and reconstruction/registration quality before claiming raw-MRI-to-report acceptance. The public scanner-QA T1 used for installation checks has no supplied lesion ground truth and is not an FCD detection accuracy benchmark.
+The fresh original public-T1 attempt in local/meld-raw-validation received SIGTERM then SIGKILL 30 seconds later and ended with exit 137. The user explicitly requested on 2026-11-12 that MELD remain stopped. Preserve its partial outputs; do not resume without new instruction. For another subject, run an independently licensed/public/deidentified raw subject using MELD's documented input layout. Inspect predictions, geometry, reports and reconstruction/registration quality before claiming raw-MRI-to-report acceptance. The public scanner-QA T1 used for installation checks has no supplied lesion ground truth and is not an FCD detection accuracy benchmark.
 
 Ubuntu and the actual container expose 24.4558 GiB RAM under the 25 GiB WSL ceiling. Avoid simultaneous memory-heavy imaging jobs. Native Ubuntu reproduction remains separate.
 
