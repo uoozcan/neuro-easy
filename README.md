@@ -2,7 +2,7 @@
 
 One Ubuntu menu for independent **MELD Graph** and **SWANe** workflows.
 
-Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOFF.md](CODEX_HANDOFF.md) to continue development and [TEST_REPORT.md](TEST_REPORT.md) for observed evidence and [VERSIONS.md](VERSIONS.md) for exact versions. This is a development launcher; complete MRI-to-report validation and native-laptop acceptance remain pending.
+Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOFF.md](CODEX_HANDOFF.md) to continue development and [TEST_REPORT.md](TEST_REPORT.md) for observed evidence and [VERSIONS.md](VERSIONS.md) for exact versions. This is a development launcher; MELD raw-MRI-to-report validation and native-laptop acceptance remain pending.
 
 ## What has been exercised
 
@@ -10,8 +10,8 @@ Development checkout: `~/projects/neuro-easy` in Ubuntu WSL2. Read [CODEX_HANDOF
 - The installed application's own checks detect dcm2niix, partial FSL 6.0.7.8 and Graphviz.
 - Real Docker hello-world and CPU Compose configuration checks pass.
 - The real public T1 DICOM reference subworkflow completed and its outputs were inspected; see TEST_REPORT.md.
-- MELD preparation and all 17 upstream tests passed; a separate reference PDF was generated with layout limitations. A fresh raw-MRI run is in progress.
-- Standalone FreeSurfer 7.4.1 is installed and detected by the fresh SWANe GUI; MELD retains bundled 7.2.
+- MELD preparation and all 17 upstream tests passed; a separate reference PDF was generated with layout limitations. The separate raw-MRI attempt failed with exit 137; its cause and end-to-end acceptance remain unresolved.
+- Standalone FreeSurfer 8.1.0 is installed and detected by SWANe. The full configured T1/classic reconstruction finished with checked images, surfaces/statistics and limited visual QC; MELD retains bundled 7.2.
 - MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 with required extensions are installed. SWANe detection and a real minimal T1 scene export/reload/display passed.
 - Offline CI tests launcher behavior only. It does not validate either scientific application.
 
@@ -61,7 +61,7 @@ bash start.sh open-swane
 
 The tested linux-64 package set is recorded in requirements-fsl-linux-64.lock; --locked reuses those exact public package URLs. The FSL installer uses official FSL/conda-forge channels in a separate local/fsl-env. It pins the requested components to the official 6.0.7.8 release manifest and installs FSL's wrapper generator. This is a **partial FSL installation for T1 reference preprocessing**, not every SWANe module. The launcher exposes FSL's command wrappers without putting FSL's Python ahead of SWANe.
 
-For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export. This host has FreeSurfer 7.4.1, MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 with SlicerFreeSurfer/SurfaceWrapSolidify installed and detected. The >=8.1 Synth options and complete multimodal/subfield workflows remain unvalidated. See TEST_REPORT.md for exact scope and INSTALLATION_PLAN.md for installation details. MELD's bundled FreeSurfer is separate and is not reused.
+For an existing compatible FSL installation, use `bash start.sh configure --fsl-dir /path/to/fsl`. FSL also needs en_US.utf8 available in `locale -a`; if absent, generate it using Ubuntu's locale tools. FreeSurfer >=7.3.2, its personal licence, MATLAB Runtime and 3D Slicer >=5.2.1 are additional dependencies for applicable SWANe analyses/export. This host has FreeSurfer 8.1.0, MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 with SlicerFreeSurfer/SurfaceWrapSolidify. The configured T1 plus complete classic reconstruction and a separate CPU SynthStrip test passed bounded output/QC checks. Other Synth, multimodal/subfield and combined export workflows remain unvalidated. The launcher defaults FS_V8_XOPTS=0; the documented fast-v8 reconstruction memory demand exceeds this VM. See TEST_REPORT.md for exact scope and INSTALLATION_PLAN.md for installation details. MELD's bundled FreeSurfer is separate and is not reused.
 
 ### Reproduce the public T1 reference test
 
@@ -80,7 +80,7 @@ Inspect `local/swane-t1-validation/outputs/`, `validation.json` and `mask-qc.png
 
 ## MELD and FreeSurfer continuation
 
-Follow [INSTALLATION_PLAN.md](INSTALLATION_PLAN.md) for personal registration, private licence import, activation of the already installed MELD image and the standalone FreeSurfer 7.4.1 Ubuntu package profile. The installer verifies the official DEB checksum and identity, uses apt without package removals, requires sudo, and preserves existing FreeSurfer installations. See TEST_REPORT.md for actual installation/validation evidence.
+Follow [INSTALLATION_PLAN.md](INSTALLATION_PLAN.md) for personal registration, private licence import, activation of the already installed MELD image, the baseline FreeSurfer 7.4.1 Ubuntu package profile, and the explicit guarded 8.1.0 upgrade. The installer verifies the official DEB checksum and identity, uses apt without package removals, requires sudo, and preserves existing FreeSurfer installations. See TEST_REPORT.md for actual installation/validation evidence.
 
 ```bash
 bash start.sh license-status

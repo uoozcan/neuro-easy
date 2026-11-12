@@ -1,8 +1,8 @@
-# Verification report — 2026-11-11
+# Verification report — 2026-11-12
 
-## Current verification — 2026-11-11
+## Current verification — 2026-11-12
 
-This section supersedes earlier licence blockers and in-progress installation statements below. Complete raw-MRI-to-report acceptance is still pending.
+This section supersedes earlier licence blockers and in-progress installation statements below. The configured SWANe T1 plus complete classic reconstruction passed the checks below; MELD raw-MRI-to-report acceptance remains incomplete.
 
 | Scope | Observed result |
 | --- | --- |
@@ -11,10 +11,44 @@ This section supersedes earlier licence blockers and in-progress installation st
 | Full upstream MELD pytest | 17 collected, 17 passed, no skips, exit 0 |
 | Separate report generation | Four-page PDF generated, exit 0; all pages inspected, with header clipping on pages 2/3 |
 | Bundled FreeSurfer 7.2 autorecon1 | Public original T1 completed, exit 0; limited visual/numeric QC |
-| Standalone FreeSurfer 7.4.1 | Official DEB installed through apt, exit 0; version, selected ELF libraries and licensed MRI conversion pass |
-| Fresh SWANe WSLg GUI | Detects FreeSurfer 7.4.1, MATLAB Runtime, Slicer 5.12.4, FSL, dcm2niix and Graphviz; Synth version recommendation remains |
-| Offline launcher tests | 37 passed; external application/network calls mocked |
-| Fresh raw T1 through MELD | RUNNING; launched 2026-11-11 12:31 UTC, reconstruction started; no final pass |
+| Standalone FreeSurfer 8.1.0 | Official DEB upgrade completed, exit 0; licensed MRI/library/MCR checks and full configured SWANe reconstruction pass; 7.4.1 retained as unmanaged fallback |
+| SWANe/Freeview follow-up | Actual SWANe checker detects 8.1.0; fresh centered Freeview GUI displays completed MRI/surface overlays. Recheck of exact SWANe Home version label was occluded/user-interrupted |
+| Offline launcher tests | 44 passed at source commit 95eb322, including real filesystem preservation/failure tests; external application calls mocked |
+| Full configured SWANe T1 case | FINISHED 2026-11-12 11:20:29 UTC; seven outputs pass structural checks and limited sampled visual QC |
+| Standalone CPU SynthStrip | Actual public T1 completed, exit 0; geometry/mask checks and limited sampled QC pass |
+| Fresh raw T1 through MELD | FAILED, exit 137 at 2026-11-11 19:34:46 UTC; cause unconfirmed; no raw-MRI end-to-end pass |
+
+### Completed 8.1.0 upgrade and configured SWANe structural run
+
+The user explicitly authorized FreeSurfer 8.1.0. The official Ubuntu20 DEB (9,454,809,452 bytes) matched publisher MD5 f7245f839d13ae64cfb406930f5adc82; observed SHA-256 is in VERSIONS.md. tools/upgrade_freesurfer_810.py invoked the official apt upgrade with no removals. Actual installer exit 0; local/freesurfer-810-upgrade.json reports PACKAGE_INSTALLED and old_files_restored=true. It preserved 227,548 old files through same-filesystem hard links and restored missing 7.4.1 paths. Dpkg now registers 8.1.0; 7.4.1 is an unmanaged file fallback, not a second registered package. The existing accepted R2019b MCR is shared through 8.1.0/MCRv97 -> 7.4.1/MCRv97.
+
+Actual build: freesurfer-linux-ubuntu20_x86_64-8.1.0-20250718-f30dfed. Original public-T1 NIfTI -> MGZ -> NIfTI preserves all voxel values and geometry (maximum affine rounding 4.410743713378906e-06). The preserved 7.4.1 mri_convert also preserves the original image. Selected ELF checks show no missing libraries. checkMCR.sh returns 0; the actual 8.1 compiled diagnostic enters segmentSubjectT1_autoEstimateAlveusML and reports MATLAB:minrhs with exit 249 because no arguments were supplied. A prepared checker initially expected the old release's exit 1 and stopped; the observed 249 is retained. Reaching that function establishes Runtime initialization, not hippocampal segmentation. Native evidence: local/freesurfer-validation/native-810.
+
+The configured public-t1-qa subject ran SWANe 0.2.1.1's actual Subject/MainWorkflow through local/swane-fs810-run/run_full_analysis.py with --subject pointing to that subject and --freesurfer-step RECONALL. The wrapper replaces GUI scan/monitor threads with synchronous calls; it does not replace scientific nodes. T1 was the only loaded input; six CPUs and the workflow's 10.87 GB scheduling limit were used. This is headless execution of the configured workflow, not a GUI-button execution claim.
+
+Started 2026-11-11 19:36:40 UTC and finished 2026-11-12 11:20:29 UTC (13:20:29 EET). Status is FINISHED. The wrapper reports 23,724.1 seconds (6.59 hours); wall elapsed is about 15.73 hours, including the overnight sleep interval reported by the user. Treat this as an observed run, not a controlled benchmark. Four saved reconstruction node results return 0, with actual autorecon1, autorecon2, autorecon-pial and final autorecon3 commands. All recorded FS_V8_XOPTS=0. The FreeSurfer log has four finished-without-error markers, and the SWANe log has no ERROR-level lines or crash files.
+
+| Export | Bytes |
+| --- | ---: |
+| ref.nii.gz | 26,055,671 |
+| ref_brain.nii.gz | 5,620,805 |
+| r-aparc_aseg.mgz | 429,372 |
+| lh.white / lh.pial | 5,271,085 each |
+| rh.white / rh.pial | 5,191,201 each |
+
+All three exported volumes are finite, (192,256,170), with matching physical geometry; largest label-affine difference is 7.62939453125e-06. Masked reference intensities are preserved. The actual resampling node uses nearest-neighbour/header registration from aparc.a2009s+aseg.mgz (Destrieux), and all 190 exported IDs including background belong to that source atlas. An initial checker incorrectly used aparc+aseg.mgz, failed, and was corrected using saved node inputs; the failed checker/reference record is retained. Nipype cleaned its staged atlas copy, so the retained native file with that exact source name is used.
+
+Exported surfaces exactly match native vertex/face arrays: left 146,385 vertices / 292,766 triangles; right 144,166 / 288,328. All four surfaces have valid finite coordinates, valid faces, two faces per edge and Euler characteristic 2. A plotting-only assertion on planes intersecting vertices was corrected with half-open edge intersections; no image/surface checks were relaxed.
+
+aseg.stats reports brain segmentation 1,216.910 mL, cortical gray matter 493.352 mL, cerebral white matter 497.744 mL, subcortical gray matter 58.110 mL, and estimated intracranial volume 1,729.465 mL. Bilateral cortex/white-matter totals agree with their summary measures. These are output measurements, not clinical normality or diagnostic findings.
+
+Fifteen reference/label overlays and fifteen native T1 white/pial cross-sections were visually reviewed: no obvious global registration shift or gross cortical-surface displacement in sampled views. This is limited sampled QC, not exhaustive correction or accuracy against a ground truth. A fresh actual Freeview 8.1 WSLg window showed centered orthogonal MRI and surface overlays plus the 3D view. The older window's cursor/layout was unusable; unreliable coordinate/keyboard attempts were abandoned in favour of documented CLI centering. No new GUI-navigation pass is claimed. Rechecking the exact version label in the existing SWANe Home window encountered user interaction/occlusion; no unrelated app input followed. Actual dependency JSON detects 8.1.0.
+
+The independent actual CPU command mri_synthstrip -i ORIGINAL_PUBLIC_T1 -o NEW_BRAIN -m NEW_MASK -t 2 completed with exit 0 in 1:52.59. GNU time recorded 5,994,456 KiB maximum RSS for this native process (not a Docker-client figure). Its binary mask has 1,614,754 voxels / 1,614.754 mL, matching native geometry; all images are finite and brain values equal input times mask exactly. Fifteen sampled orthogonal overlays showed no gross brain truncation. This extraction mask includes a different tissue/CSF scope from aseg brain volume; the two volumes are not interchangeable. No lesion/segmentation ground truth was supplied.
+
+Private evidence: local/swane-fs810-validation/{result,gui-validation,initial-reference-error}.json, its two QC figures, local/swane-work/public-t1-qa-run-status.json, local/logs/swane-fs810-full-analysis.log, and local/freesurfer-validation/native-810/result.json. Original MRI/data, surfaces, models, licences and screenshots remain excluded from Git.
+
+The original Power saver plan is restored. No matching analysis-specific keep-awake helper was running when checked; the user reports it released its hold at 13:21. Querying all Windows power requests requires a separately elevated Windows administrator shell and was not possible in this process, so global sleep readiness is not independently certified. No sleep settings were changed in this follow-up.
 
 ### MELD preparation and full upstream tests
 
@@ -50,7 +84,7 @@ MELD pytest initially used all CPUs, then an eight-CPU quota. Observed memory re
 
 Temporary Windows Balanced selection was reverted to the original Power saver scheme at 2026-11-10 21:17 UTC; both the actual scheme and restore_required=false were subsequently verified. The paused installer was resumed and finished; no paused installer/profiler remains. WSL restarted before the next day's continuation; the existing project daemon was restarted without reinstalling or resetting WSL.
 
-### Fresh raw-MRI validation in progress
+### Fresh MELD raw-MRI attempt — failed separately
 
 Command:
 
@@ -59,13 +93,13 @@ bash start.sh run-meld --subject sub-publicqa --threads 4 \
   --data "$PWD/local/meld-raw-validation"
 ```
 
-This uses the original public scanner-QA T1 (source/commit/checksum below), a fresh subject and isolated data root, bundled FreeSurfer 7.2.0, default noHarmo and no FLAIR. No earlier autorecon1, host 7.4 surfaces or SWANe outputs were reused. Input provenance passed; actual recon-all has started. Log: local/logs/meld-public-raw-pipeline.log; status: local/meld-run-sub-publicqa.json. Full reconstruction, feature extraction, inference, report, structural checks and visual QC must finish before acceptance. There is no supplied lesion ground truth.
+This uses the original public scanner-QA T1 (source/commit/checksum below), a fresh subject and isolated data root, bundled FreeSurfer 7.2.0, default noHarmo and no FLAIR. No earlier autorecon1, host 7.4 surfaces or SWANe outputs were reused. Input provenance passed and reconstruction ran, but the outer command ended with exit 137 after 7:03:39 at 2026-11-11 19:34:46 UTC. No final prediction/report acceptance exists. Exit 137 alone does not identify the cause; a current kernel OOM-log search returned no corroborating record. Preserve the incomplete subject and investigate termination/resume in the pinned 7.2 image before another run. Never replace it with this SWANe 8.1 reconstruction. Log: local/logs/meld-public-raw-pipeline.log; status: local/meld-run-sub-publicqa.json. Full reconstruction, feature extraction, inference, report, structural checks and visual QC must finish before acceptance. There is no supplied lesion ground truth.
 
 The launcher now checks actual finite, varying 3D MRI input in the pinned container, rejects the empty example, records hashes/image provenance, refuses untracked/changed reconstruction reuse, and checks fresh prediction/report files after upstream returns. This prevents upstream's zero-exit error paths from becoming false passes. Successful structural checks still require visual reconstruction/registration/report review. Actual negative test with the empty official T1 returned 2 and did not launch analysis. Thirty-seven offline tests pass, including preflight/postcheck failure propagation and per-run data isolation; Bash syntax, Python compilation and git diff checks pass. A real pinned-container postcheck rejected missing artifacts with exit 2; freshly copied actual reference prediction/MRI/PDF passed structural checks (not a fresh inference run). Each Compose invocation now retains a unique private configuration snapshot so another command cannot replace a long-running case's data mount.
 
 Publication: commit 5bb246a9ba8c98148c2e0d705bc27d2d80993538 passed GitHub Actions Launcher tests only run 43022131830. Its 37 offline cases do not validate scientific execution. Draft PR remains https://github.com/uoozcan/neuro-easy/pull/1.
 
-Remaining separate scopes: raw-MRI run completion/QC, SWANe full study/reconstruction/export, Synth version/features, full subfield/multimodal validation, native Ubuntu laptop reproduction and SWANe-to-MELD interoperability. The historical sections below retain prior attempts and blockers; their older licence/installation statements are superseded here.
+Remaining separate scopes: diagnose/resume MELD raw-MRI execution and complete its outputs/QC; combined full-study Slicer export, subfield/multimodal/SynthSeg/SynthMorph validation, fast-v8 reconstruction on adequate hardware, native Ubuntu laptop reproduction and SWANe-to-MELD interoperability. The historical sections below retain prior attempts and blockers; their older licence/installation statements are superseded here.
 
 ### Requested MATLAB Runtime and Slicer installation — completed 2026-11-11
 

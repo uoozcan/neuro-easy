@@ -1,14 +1,14 @@
 # MELD and FreeSurfer installation/activation plan
 
-Updated 2026-11-11. Continue the existing Ubuntu WSL installation; do not reinstall MELD.
+Updated 2026-11-12. Continue the existing Ubuntu WSL installation; do not reinstall MELD.
 
 ## Versions and separation
 
 | Use | Version | Current state |
 | --- | --- | --- |
-| MELD Graph | v2.2.7 CPU, pinned digest in VERSIONS.md | Prepared; all 17 upstream tests passed; fresh raw-MRI run in progress |
+| MELD Graph | v2.2.7 CPU, pinned digest in VERSIONS.md | Prepared; all 17 upstream tests passed; raw-MRI attempt failed 137, cause unresolved |
 | FreeSurfer used by MELD | 7.2.0 inside the MELD image | Licensed conversion and public-T1 autorecon1 passed |
-| Standalone FreeSurfer for SWANe | 7.4.1 official Ubuntu 20.04 DEB | Installed; version/library/licensed MRI and SWANe GUI checks passed |
+| Standalone FreeSurfer for SWANe | 8.1.0 official Ubuntu20 DEB | Installed via explicit apt upgrade; configured complete classic T1 reconstruction and CPU SynthStrip output/QC checks pass; 7.4.1 retained as unmanaged fallback |
 | SWANe | 0.2.1.1 | Installed; T1 reference test and GUI evidence in TEST_REPORT.md |
 
 MELD's selected source rejects FreeSurfer 7.3/7.4. It retains its bundled 7.2.0 regardless of the host SWANe setup. No SWANe-to-MELD handoff is implemented.
@@ -51,7 +51,7 @@ The observed official data archive is 701,224,128 bytes with SHA-256 f739a9c9b9e
 
 Capture actual exit codes, model/test-data paths, runtime/resource observations, and pytest collection/failures/skips. Upstream verification may use preprocessed inputs and does not prove a raw-MRI reconstruction pass.
 
-A fresh original public-T1 case is running in local/meld-raw-validation. For another subject, run an independently licensed/public/deidentified raw subject using MELD's documented input layout. Inspect predictions, geometry, reports and reconstruction/registration quality before claiming raw-MRI-to-report acceptance. The public scanner-QA T1 used for installation checks has no supplied lesion ground truth and is not an FCD detection accuracy benchmark.
+The fresh original public-T1 attempt in local/meld-raw-validation ended with exit 137; its cause and safe resume remain unresolved. For another subject, run an independently licensed/public/deidentified raw subject using MELD's documented input layout. Inspect predictions, geometry, reports and reconstruction/registration quality before claiming raw-MRI-to-report acceptance. The public scanner-QA T1 used for installation checks has no supplied lesion ground truth and is not an FCD detection accuracy benchmark.
 
 Ubuntu and the actual container expose 24.4558 GiB RAM under the 25 GiB WSL ceiling. Avoid simultaneous memory-heavy imaging jobs. Native Ubuntu reproduction remains separate.
 
@@ -73,10 +73,10 @@ For download/verification only, add --download-only. A package-verified status i
 
 ## 5. Configure and check standalone tools
 
-Review the installed official setup script, then configure the launcher:
+Review the installed official setup script, then configure the launcher. The examples below use this host's upgraded 8.1.0; for a new baseline 7.4.1 installation, substitute 7.4.1 until the explicit upgrade in section 7 has completed:
 
 ```bash
-bash start.sh configure --freesurfer-dir /usr/local/freesurfer/7.4.1
+bash start.sh configure --freesurfer-dir /usr/local/freesurfer/8.1.0
 bash start.sh swane-dependencies
 ```
 
@@ -85,7 +85,7 @@ The launcher skips MATLAB startup-file creation for this structural profile and 
 For a dedicated manual terminal:
 
 ```bash
-export FREESURFER_HOME=/usr/local/freesurfer/7.4.1
+export FREESURFER_HOME=/usr/local/freesurfer/8.1.0
 export NO_FSFAST=1  # structural setup; skip MATLAB startup-file creation
 export FS_LICENSE="$PWD/local/meld-release/license.txt"
 mkdir -p "$PWD/local/swane-freesurfer-subjects"
@@ -96,7 +96,7 @@ recon-all -version
 
 Check shared libraries, real licence-requiring MRI commands and SWANe detection. A version or format conversion test is not cortical reconstruction. Run actual MRI reconstruction and inspect its outputs/QC before claiming that scope.
 
-FreeSurfer 7.4.1 does not enable SWANe's >=8.1 Synth options. MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 are now installed and detected on this host; other machines still require their own installation.
+The baseline 7.4.1 profile does not enable SWANe's >=8.1 Synth options; this host completed the explicit 8.1.0 upgrade in section 7. MATLAB Runtime R2019b Update 9 and Slicer 5.12.4 are now installed and detected on this host; other machines still require their own installation.
 
 ## 6. MATLAB Runtime and Slicer follow-up
 
@@ -115,3 +115,34 @@ The unmodified SWANe minimal public-T1 exporter saved a valid scene, which reloa
 TEST_REPORT.md distinguishes offline mocks, installed applications, GUI checks, MRI preprocessing and complete scientific workflows. Keep MRI data, licences, models, logs, environments and private registration screenshots out of Git.
 
 Official sources: [MELD Docker installation](https://meld-graph.readthedocs.io/en/latest/install_docker.html), [FreeSurfer Linux setup](https://surfer.nmr.mgh.harvard.edu/fswiki/LinuxInstall), [official release packages/checksums and package-install guidance](https://surfer.nmr.mgh.harvard.edu/fswiki/rel7downloads).
+
+## 7. Explicit upgrade from 7.4.1 to 8.1.0
+
+The user authorized this host upgrade; the package installation and subsequent configured T1/classic reconstruction plus CPU SynthStrip checks completed. Check TEST_REPORT.md for actual runtime results. SWANe 0.2.1.1 requires >=8.1 for its Synth options. This does not change MELD's bundled 7.2.0.
+
+For an existing, registered 7.4.1 installation on Ubuntu 20.04/22.04, inspect the plan:
+
+```bash
+local/swane-env/bin/python tools/upgrade_freesurfer_810.py --plan --host-storage /mnt/c
+```
+
+Download the matching official 8.1.0 Ubuntu DEB from [FreeSurfer downloads](https://surfer.nmr.mgh.harvard.edu/fswiki/rel7downloads) into ignored local/downloads. The Ubuntu20 package is 9,454,809,452 bytes. Check physical free space before downloading; the upgrade additionally requires 30 GiB free after that package is present. On WSL, --host-storage must identify the actual Windows drive containing ext4.vhdx, which can differ from the Windows project drive.
+
+After personally accepting the FreeSurfer licence, run this explicit command for the Ubuntu20 package:
+
+```bash
+sudo local/swane-env/bin/python tools/upgrade_freesurfer_810.py \
+  --package "$PWD/local/downloads/freesurfer_ubuntu20-8.1.0_amd64.deb" \
+  --host-storage /mnt/c --accept-freesurfer-license
+```
+
+Use the Ubuntu22 package name on Ubuntu 22.04. This utility verifies the publisher MD5 and package identity, simulates apt with no removals, then preserves the complete old tree with same-filesystem hard links before the official apt upgrade. It never repackages the DEB. Missing 7.4.1 paths are restored in a finally block; conflicting paths are refused. The registered package becomes 8.1.0; retained 7.4.1 files are an unmanaged fallback. The installed MCRv97 is shared by a directory symlink, without changing global library paths or downloading another Runtime.
+
+Do not rerun after an interruption while a target or preservation tree exists. Inspect local/freesurfer-810-upgrade.json and the actual apt/dpkg process first. PACKAGE_INSTALLED means package installation only. Verify version, licensed MRI conversion, selected libraries, MCR startup and the intended Synth workflow before selecting the new directory:
+
+```bash
+bash start.sh configure --freesurfer-dir /usr/local/freesurfer/8.1.0
+bash start.sh swane-dependencies
+```
+
+The launcher defaults host FS_V8_XOPTS=0, retaining classic reconstruction. Official [v8 release notes](https://surfer.nmr.mgh.harvard.edu/fswiki/rel7downloads/rel8notes) describe fast recon-all peaks around 80 GiB; this 25 GiB VM is not a suitable acceptance environment for that mode. An explicit caller value is preserved. Individual Synth tools have different memory requirements and need separate tests; version detection does not validate them. Leave SWANe Synth preferences off until the chosen workflow has been tested. A failed new-version runtime check can be followed by selecting the retained /usr/local/freesurfer/7.4.1 directory; this is configuration fallback, not a dpkg package downgrade.
